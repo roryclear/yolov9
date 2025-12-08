@@ -2,11 +2,11 @@
 import torch
 import numpy as np
 import PIL.Image
-from huggingface_hub import hf_hub_download
 import time
 import torchvision
 import cv2
 import torch.nn as nn
+
 
 def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
     # Resize and pad image while meeting stride-multiple constraints
@@ -147,6 +147,7 @@ def non_max_suppression(
         output[xi] = x[i]
     return output
 
+
 class DetectMultiBackend(nn.Module):
     # YOLO MultiBackend class for python inference on various backends
     def __init__(self, weights='yolo.pt', device=torch.device('cpu'), dnn=False, data=None, fp16=False, fuse=True):
@@ -183,7 +184,6 @@ def predict(image_path, weights='yolov9-c.pt', imgsz=640, conf_thres=0.1, iou_th
     pred = non_max_suppression(pred[0][0], conf_thres, iou_thres, classes=None, max_det=1000)
     return pred
 
-
-hf_hub_download("merve/yolov9", filename="yolov9-c.pt", local_dir="./")
+# https://huggingface.co/merve/yolov9/tree/main
 preds = predict("micra.jpg", weights="yolov9-c.pt")
 print(preds)
