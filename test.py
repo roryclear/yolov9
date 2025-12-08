@@ -151,6 +151,7 @@ def non_max_suppression(
 def attempt_load():
     ckpt = torch.load('yolov9-c.pt', map_location='cpu')  # load
     ckpt = (ckpt['model']).to("cpu").float()
+    print(type(ckpt))
     return ckpt.eval()
     
 class DetectMultiBackend(nn.Module):
