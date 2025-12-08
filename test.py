@@ -148,34 +148,14 @@ def non_max_suppression(
     return output
 
 
-class Ensemble(nn.ModuleList):
-    # Ensemble of models
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x, augment=False, profile=False, visualize=False):
-        y = [module(x, augment, profile, visualize)[0] for module in self]
-        # y = torch.stack(y).max(0)[0]  # max ensemble
-        # y = torch.stack(y).mean(0)  # mean ensemble
-        y = torch.cat(y, 1)  # nms ensemble
-        return y, None  # inference, train output
-
 def attempt_load(weights, device=None, inplace=True, fuse=True):
     # Loads an ensemble of models weights=[a,b,c] or a single model weights=[a] or weights=a
 
-    model = Ensemble()
+    model = []
     for w in weights if isinstance(weights, list) else [weights]:
         ckpt = torch.load('yolov9-c.pt', map_location='cpu')  # load
-        ckpt = (ckpt.get('ema') or ckpt['model']).to(device).float()  # FP32 model
-
-        # Model compatibility updates
-        if not hasattr(ckpt, 'stride'):
-            ckpt.stride = torch.tensor([32.])
-        if hasattr(ckpt, 'names') and isinstance(ckpt.names, (list, tuple)):
-            ckpt.names = dict(enumerate(ckpt.names))  # convert to dict
-
-        model.append(ckpt.fuse().eval() if fuse and hasattr(ckpt, 'fuse') else ckpt.eval())  # model in eval mode
-
+        ckpt = (ckpt['model']).to(device).float()
+        model.append(ckpt.eval())
 
     # Return model
     if len(model) == 1:
