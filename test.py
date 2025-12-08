@@ -1,12 +1,12 @@
 # make sure you have the following dependencies
 import torch
 import numpy as np
-from models.common import DetectMultiBackend
 import PIL.Image
 from huggingface_hub import hf_hub_download
 import time
 import torchvision
 import cv2
+import torch.nn as nn
 
 def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
     # Resize and pad image while meeting stride-multiple constraints
@@ -147,6 +147,24 @@ def non_max_suppression(
         output[xi] = x[i]
     return output
 
+class DetectMultiBackend(nn.Module):
+    # YOLO MultiBackend class for python inference on various backends
+    def __init__(self, weights='yolo.pt', device=torch.device('cpu'), dnn=False, data=None, fp16=False, fuse=True):
+        from models.experimental import attempt_load  # scoped to avoid circular import
+        super().__init__()
+        w = str(weights[0] if isinstance(weights, list) else weights)
+        pt = True
+        fp16 = False
+        nhwc = False
+        stride = 32
+        model = attempt_load(weights if isinstance(weights, list) else w, device=device, inplace=True, fuse=fuse)
+        names = model.names
+        model.half() if fp16 else model.float()
+        self.model = model  # explicitly assign for to(), cpu(), cuda(), half()
+        self.__dict__.update(locals())  # assign all variables to self
+
+    def forward(self, im): return self.model(im)
+
 def predict(image_path, weights='yolov9-c.pt', imgsz=640, conf_thres=0.1, iou_thres=0.45):
     device = torch.device('cpu')
     model = DetectMultiBackend(weights=weights, device="cpu", fp16=False, data='data/coco.yaml')
@@ -161,7 +179,7 @@ def predict(image_path, weights='yolov9-c.pt', imgsz=640, conf_thres=0.1, iou_th
     img /= 255.0
     if img.ndimension() == 3:
         img = img.unsqueeze(0)
-    pred = model(img, augment=False, visualize=False)
+    pred = model(img)
     pred = non_max_suppression(pred[0][0], conf_thres, iou_thres, classes=None, max_det=1000)
     return pred
 
