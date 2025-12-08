@@ -6,7 +6,6 @@ import time
 import torchvision
 import cv2
 import torch.nn as nn
-from utils.downloads import attempt_download
 
 
 def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
@@ -166,7 +165,7 @@ def attempt_load(weights, device=None, inplace=True, fuse=True):
 
     model = Ensemble()
     for w in weights if isinstance(weights, list) else [weights]:
-        ckpt = torch.load(attempt_download(w), map_location='cpu')  # load
+        ckpt = torch.load('yolov9-c.pt', map_location='cpu')  # load
         ckpt = (ckpt.get('ema') or ckpt['model']).to(device).float()  # FP32 model
 
         # Model compatibility updates
@@ -193,7 +192,6 @@ def attempt_load(weights, device=None, inplace=True, fuse=True):
 class DetectMultiBackend(nn.Module):
     # YOLO MultiBackend class for python inference on various backends
     def __init__(self, weights='yolo.pt', device=torch.device('cpu'), dnn=False, data=None, fp16=False, fuse=True):
-        from models.experimental import attempt_load  # scoped to avoid circular import
         super().__init__()
         w = str(weights[0] if isinstance(weights, list) else weights)
         pt = True
