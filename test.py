@@ -148,27 +148,11 @@ def non_max_suppression(
     return output
 
 
-def attempt_load(weights, device=None, inplace=True, fuse=True):
-    # Loads an ensemble of models weights=[a,b,c] or a single model weights=[a] or weights=a
-
-    model = []
-    for w in weights if isinstance(weights, list) else [weights]:
-        ckpt = torch.load('yolov9-c.pt', map_location='cpu')  # load
-        ckpt = (ckpt['model']).to(device).float()
-        model.append(ckpt.eval())
-
-    # Return model
-    if len(model) == 1:
-        return model[-1]
-
-    # Return detection ensemble
-    print(f'Ensemble created with {weights}\n')
-    for k in 'names', 'nc', 'yaml':
-        setattr(model, k, getattr(model[0], k))
-    model.stride = model[torch.argmax(torch.tensor([m.stride.max() for m in model])).int()].stride  # max stride
-    assert all(model[0].nc == m.nc for m in model), f'Models have different class counts: {[m.nc for m in model]}'
-    return model
-
+def attempt_load():
+    ckpt = torch.load('yolov9-c.pt', map_location='cpu')  # load
+    ckpt = (ckpt['model']).to("cpu").float()
+    return ckpt.eval()
+    
 class DetectMultiBackend(nn.Module):
     # YOLO MultiBackend class for python inference on various backends
     def __init__(self, weights='yolo.pt', device=torch.device('cpu'), dnn=False, data=None, fp16=False, fuse=True):
@@ -178,7 +162,7 @@ class DetectMultiBackend(nn.Module):
         fp16 = False
         nhwc = False
         stride = 32
-        model = attempt_load(weights if isinstance(weights, list) else w, device=device, inplace=True, fuse=fuse)
+        model = attempt_load()
         names = model.names
         model.half() if fp16 else model.float()
         self.model = model  # explicitly assign for to(), cpu(), cuda(), half()
