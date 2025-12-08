@@ -16,7 +16,7 @@ from models.common import *
 from models.experimental import *
 from utils.general import LOGGER, check_version, check_yaml, make_divisible, print_args
 from utils.plots import feature_visualization
-from utils.torch_utils import (fuse_conv_and_bn, initialize_weights, model_info, profile, scale_img, select_device,
+from utils.torch_utils import (fuse_conv_and_bn, initialize_weights, model_info, profile, scale_img,
                                time_sync)
 from utils.tal.anchor_generator import make_anchors, dist2bbox
 
@@ -793,7 +793,7 @@ if __name__ == '__main__':
     opt = parser.parse_args()
     opt.cfg = check_yaml(opt.cfg)  # check YAML
     print_args(vars(opt))
-    device = select_device(opt.device)
+    device = torch.device(opt.device)
 
     # Create model
     im = torch.rand(opt.batch_size, 3, 640, 640).to(device)

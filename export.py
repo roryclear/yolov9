@@ -26,7 +26,7 @@ from models.yolo import ClassificationModel, Detect, DDetect, DualDetect, DualDD
 from utils.dataloaders import LoadImages
 from utils.general import (LOGGER, Profile, check_dataset, check_img_size, check_requirements, check_version,
                            check_yaml, colorstr, file_size, get_default_args, print_args, url2file, yaml_save)
-from utils.torch_utils import select_device, smart_inference_mode
+from utils.torch_utils import smart_inference_mode
 
 MACOS = platform.system() == 'Darwin'  # macOS environment
 
