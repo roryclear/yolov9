@@ -16,8 +16,6 @@ from IPython.display import display
 from PIL import Image
 from utils.general import (LOGGER, ROOT, check_requirements, check_suffix, check_version,
                            xywh2xyxy, yaml_load)
-from utils.plots import Annotator, colors, save_one_box
-from utils.torch_utils import copy_attr
 
 
 def autopad(k, p=None, d=1):  # kernel, padding, dilation
