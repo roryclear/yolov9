@@ -2,7 +2,7 @@
 import torch
 import numpy as np
 from models.common import DetectMultiBackend
-from utils.general import non_max_suppression, scale_boxes
+from utils.general import non_max_suppression
 from utils.torch_utils import select_device, smart_inference_mode
 from utils.augmentations import letterbox
 import PIL.Image
