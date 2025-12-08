@@ -29,14 +29,6 @@ except ImportError:
 warnings.filterwarnings('ignore', message='User provided device_type of \'cuda\', but CUDA is not available. Disabling')
 warnings.filterwarnings('ignore', category=UserWarning)
 
-
-def smart_inference_mode(torch_1_9=check_version(torch.__version__, '1.9.0')):
-    # Applies torch.inference_mode() decorator if torch>=1.9.0 else torch.no_grad() decorator
-    def decorate(fn):
-        return (torch.inference_mode if torch_1_9 else torch.no_grad)()(fn)
-
-    return decorate
-
 @contextmanager
 def torch_distributed_zero_first(local_rank: int):
     # Decorator to make all processes in distributed training wait for each local_master to do something

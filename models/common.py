@@ -28,7 +28,7 @@ from utils.general import (LOGGER, ROOT, Profile, check_requirements, check_suff
                            is_notebook, make_divisible, non_max_suppression, scale_boxes,
                            xywh2xyxy, xyxy2xywh, yaml_load)
 from utils.plots import Annotator, colors, save_one_box
-from utils.torch_utils import copy_attr, smart_inference_mode
+from utils.torch_utils import copy_attr
 
 
 def autopad(k, p=None, d=1):  # kernel, padding, dilation
@@ -1015,7 +1015,6 @@ class AutoShape(nn.Module):
                     setattr(m, k, list(map(fn, x))) if isinstance(x, (list, tuple)) else setattr(m, k, fn(x))
         return self
 
-    @smart_inference_mode()
     def forward(self, ims, size=640, augment=False, profile=False):
         # Inference from various sources. For size(height=640, width=1280), RGB images example inputs are:
         #   file:        ims = 'data/images/zidane.jpg'  # str or PosixPath

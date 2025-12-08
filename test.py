@@ -3,14 +3,12 @@ import torch
 import numpy as np
 from models.common import DetectMultiBackend
 from utils.general import non_max_suppression
-from utils.torch_utils import select_device, smart_inference_mode
 from utils.augmentations import letterbox
 import PIL.Image
 from huggingface_hub import hf_hub_download 
 
-@smart_inference_mode()
 def predict(image_path, weights='yolov9-c.pt', imgsz=640, conf_thres=0.1, iou_thres=0.45):
-    device = select_device('cpu')
+    device = torch.device('cpu')
     model = DetectMultiBackend(weights=weights, device="cpu", fp16=False, data='data/coco.yaml')
     stride, names, pt = model.stride, model.names, model.pt
 
