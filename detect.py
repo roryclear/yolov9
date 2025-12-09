@@ -69,20 +69,11 @@ def autopad(k, p=None, d=1):  # kernel, padding, dilation
     return p
 
 class Conv(nn.Module):
-    # Standard convolution with args(ch_in, ch_out, kernel, stride, padding, groups, dilation, activation)
-    default_act = nn.SiLU()  # default activation
-
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, act=True):
         super().__init__()
         self.conv = nn.Conv2d(c1, c2, k, s, autopad(k, p, d), groups=g, dilation=d, bias=False)
-        self.bn = nn.BatchNorm2d(c2)
-        self.act = self.default_act if act is True else act if isinstance(act, nn.Module) else nn.Identity()
 
-    def forward(self, x):
-        return self.act(self.bn(self.conv(x)))
-
-    def forward_fuse(self, x):
-        return self.act(self.conv(x))
+    def forward_fuse(self, x): return F.silu(self.conv(x))
 
 class ADown(nn.Module):
     def __init__(self, c1=1, c2=1):  # ch_in, ch_out, shortcut, kernels, groups, expand
@@ -457,14 +448,13 @@ def fuse_conv_and_bn(conv, bn):
     return fusedconv
 
 class DetectionModel(nn.Module):
-    # YOLO base model
     def forward(self, x):
       y = []  # outputs
       for m in self.model:
-          if m.f != -1:  # if not from previous layer
-              x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
-          x = m(x)  # run
-          y.append(x if m.i in self.save else None)  # save output
+        if m.f != -1:  # if not from previous layer
+          x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]
+        x = m(x)
+        y.append(x)
       return x
 
 IMG_FORMATS = 'bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm'  # include image suffixes
