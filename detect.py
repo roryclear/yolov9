@@ -16,7 +16,6 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 from models.common import DetectMultiBackend
-from utils.torch_utils import select_device
 import numpy as np
 
 IMG_FORMATS = 'bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm'  # include image suffixes
@@ -442,10 +441,6 @@ def run():
         source = "data/images/football.webp"
         imgsz = (1280,1280)
         device = "cpu"
-
-
-        # Load model
-        device = select_device(device)
         model = DetectMultiBackend(weights, device=device, dnn=False, data="ROOT", fp16=False)
         stride, names, pt = model.stride, model.names, model.pt
         imgsz = check_img_size(imgsz, s=stride)  # check image size
