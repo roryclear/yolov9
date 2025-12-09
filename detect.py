@@ -29,8 +29,6 @@ class Ensemble(nn.ModuleList):
 
     def forward(self, x, augment=False, profile=False, visualize=False):
         y = [module(x, augment, profile, visualize)[0] for module in self]
-        # y = torch.stack(y).max(0)[0]  # max ensemble
-        # y = torch.stack(y).mean(0)  # mean ensemble
         y = torch.cat(y, 1)  # nms ensemble
         return y, None  # inference, train output
 
@@ -648,7 +646,6 @@ def non_max_suppression(
     if isinstance(prediction, (list, tuple)):  # YOLO model in validation model, output = (inference_out, loss_out)
         prediction = prediction[0]  # select only inference output
 
-    device = prediction.device
 
     bs = prediction.shape[0]  # batch size
     nc = prediction.shape[1] - nm - 4  # number of classes
@@ -663,10 +660,7 @@ def non_max_suppression(
     # min_wh = 2  # (pixels) minimum box width and height
     max_wh = 7680  # (pixels) maximum box width and height
     max_nms = 30000  # maximum number of boxes into torchvision.ops.nms()
-    time_limit = 2.5 + 0.05 * bs  # seconds to quit after
-    redundant = True  # require redundant detections
     multi_label &= nc > 1  # multiple labels per box (adds 0.5ms/img)
-    merge = False  # use merge-NMS
 
     t = time.time()
     output = [torch.zeros((0, 6 + nm), device=prediction.device)] * bs
