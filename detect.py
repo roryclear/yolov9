@@ -18,11 +18,37 @@ from utils.torch_utils import select_device, smart_inference_mode
 import numpy as np
 
 expected = {}
+
+expected["t"] = [[0.6005249,172.09955,260.8799,353.5816,0.9351016,17.0],
+[359.81555,187.23212,493.67175,300.85168,0.8835656,19.0],
+[-0.18384552,166.75711,126.89506,254.24344,0.77168775,17.0],
+[190.40509,174.12317,347.76312,313.40375,0.5551081,17.0],
+[198.11319,174.85794,347.64676,312.63553,0.40155655,19.0],
+[313.457,187.96585,377.04037,278.69553,0.3023718,19.0]]
+
+expected["s"] = [[0.44366455,171.08423,261.9514,352.0725,0.95025265,17.0,],
+[359.11884,187.93762,493.84656,300.49738,0.9410084,17.0,],
+[192.13397,173.91498,347.50568,313.46487,0.874638,17.0,],
+[-0.78829956,165.97437,127.75125,250.51703,0.7525116,17.0,],
+[307.98074,187.44495,378.00778,279.00497,0.73356193,17.0,]]
+
+expected["m"] = [[0.0076293945,166.61462,261.85114,353.5963,0.95224553,17.0,],
+[359.29712,187.89044,493.1936,300.0057,0.9316622,17.0,],
+[188.73889,173.78745,346.6302,313.33276,0.8990828,17.0,],
+[307.7046,185.42612,378.59497,280.46436,0.8008105,17.0,],
+[0.08206177,166.5404,128.06165,254.06732,0.7723973,17.0,]]
+
 expected["c"] = [[0.103149414,167.59196,262.04965,352.6728,0.94617075,17.0],
     [359.06604,187.69147,493.11407,300.52197,0.9350463,17.0],
     [188.1949,173.86285,346.67218,312.97968,0.90036,17.0],
     [0.035057068,166.53616,127.28791,301.4479,0.6030161,17.0],
     [276.15863,185.0304,380.56927,281.01392,0.3605076,17.0]]
+
+expected["e"] = [[0.30444336,167.40674,262.07635,353.35144,0.95921373,17.0,],
+[358.09,187.81827,493.11832,300.15564,0.94219214,17.0,],
+[188.40144,174.05096,346.68842,312.86578,0.91745174,17.0,],
+[307.87598,185.24744,378.54773,280.15872,0.7073413,17.0,],
+[-0.04030609,166.42424,127.84054,251.55229,0.5356246,17.0,],]
 
 def run(
         weights=ROOT / 'yolo.pt',  # model path or triton URL
@@ -54,39 +80,39 @@ def run(
         vid_stride=1,  # video frame-rate stride
 ):
     
-    weights = './yolov9-c-converted.pt'
+    for size in ["t", "s", "m", "c", "e"]:
+        weights = f'./yolov9-{size}-converted.pt'
 
-    source = str(source)
+        source = str(source)
 
-    # Directories
-    save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
-    (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
+        # Directories
+        save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
+        (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
 
-    # Load model
-    device = select_device(device)
-    model = DetectMultiBackend(weights, device=device, dnn=dnn, data=data, fp16=half)
-    stride, names, pt = model.stride, model.names, model.pt
-    imgsz = check_img_size(imgsz, s=stride)  # check image size
+        # Load model
+        device = select_device(device)
+        model = DetectMultiBackend(weights, device=device, dnn=dnn, data=data, fp16=half)
+        stride, names, pt = model.stride, model.names, model.pt
+        imgsz = check_img_size(imgsz, s=stride)  # check image size
 
-    dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
+        dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
+        for path, im, im0s, vid_cap, s in dataset:
+          im = torch.from_numpy(im).to(model.device)
+          im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
+          im /= 255  # 0 - 255 to 0.0 - 1.0
+          if len(im.shape) == 3: im = im[None]  # expand for batch dim
 
-    print(dataset)
-    for path, im, im0s, vid_cap, s in dataset:
-        im = torch.from_numpy(im).to(model.device)
-        im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
-        im /= 255  # 0 - 255 to 0.0 - 1.0
-        if len(im.shape) == 3: im = im[None]  # expand for batch dim
+          pred = model(im, augment=augment, visualize=visualize)
+          pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
 
-        pred = model(im, augment=augment, visualize=visualize)
-        pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
+          # Second-stage classifier (optional)
+          # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
+          
+          print("pred =",pred)
+          pred = pred[0].detach().numpy()
+          print(pred)        
 
-        # Second-stage classifier (optional)
-        # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
-        
-        print("pred =",pred)
-        pred = pred[0].detach().numpy()
-        print(pred)
-        np.testing.assert_allclose(pred, expected["c"])
+          np.testing.assert_allclose(pred, expected[size])
 
 
 def parse_opt():
