@@ -10,6 +10,7 @@ import cv2
 import torch.nn as nn
 from urllib.parse import urlparse
 from copy import deepcopy
+import pickle
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLO root directory
@@ -77,12 +78,6 @@ class Conv(nn.Module):
         self.bn = nn.BatchNorm2d(c2)
         self.act = self.default_act if act is True else act if isinstance(act, nn.Module) else nn.Identity()
 
-    def forward(self, x):
-        return self.act(self.bn(self.conv(x)))
-
-    def forward_fuse(self, x):
-        return self.act(self.conv(x))
-
 class DetectMultiBackend(nn.Module):
     # YOLO MultiBackend class for python inference on various backends
     def __init__(self, weights='yolo.pt', device=torch.device('cpu'), dnn=False, data=None, fp16=False, fuse=True):
@@ -94,12 +89,15 @@ class DetectMultiBackend(nn.Module):
         stride = 32  # default stride
         cuda = torch.cuda.is_available() and device.type != 'cpu'  # use CUDA
 
-        model = attempt_load(weights)
+        model = pickle.load(open(weights, 'rb'))
+
         for i in range(len(model.model)):
           if model.model[i].__class__.__name__ == 'Conv':
             new_conv = Conv()
             for k, v in vars(model.model[i]).items(): setattr(new_conv, k, v)
             model.model[i] = new_conv
+
+        with open(weights, 'wb') as f: pickle.dump(model, f)
 
 
             

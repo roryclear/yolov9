@@ -50,11 +50,7 @@ class Conv(nn.Module):
         self.bn = nn.BatchNorm2d(c2)
         self.act = self.default_act if act is True else act if isinstance(act, nn.Module) else nn.Identity()
 
-    def forward(self, x):
-        return self.act(self.bn(self.conv(x)))
-
-    def forward_fuse(self, x):
-        return self.act(self.conv(x))
+    def forward_fuse(self, x): return self.act(self.conv(x))
 
 
 class AConv(nn.Module):
