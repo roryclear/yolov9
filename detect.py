@@ -15,9 +15,15 @@ from models.common import DetectMultiBackend
 from utils.dataloaders import IMG_FORMATS, VID_FORMATS, LoadImages, LoadScreenshots, LoadStreams
 from utils.general import (Profile, check_file, check_img_size, check_imshow, increment_path, non_max_suppression, print_args)
 from utils.torch_utils import select_device, smart_inference_mode
+import numpy as np
 
+expected = {}
+expected["c"] = [[0.103149414,167.59196,262.04965,352.6728,0.94617075,17.0],
+    [359.06604,187.69147,493.11407,300.52197,0.9350463,17.0],
+    [188.1949,173.86285,346.67218,312.97968,0.90036,17.0],
+    [0.035057068,166.53616,127.28791,301.4479,0.6030161,17.0],
+    [276.15863,185.0304,380.56927,281.01392,0.3605076,17.0]]
 
-@smart_inference_mode()
 def run(
         weights=ROOT / 'yolo.pt',  # model path or triton URL
         source=ROOT / 'data/images',  # file/dir/URL/glob/screen/0(webcam)
@@ -47,13 +53,10 @@ def run(
         dnn=False,  # use OpenCV DNN for ONNX inference
         vid_stride=1,  # video frame-rate stride
 ):
+    
+    weights = './yolov9-c-converted.pt'
+
     source = str(source)
-    is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
-    is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
-    webcam = source.isnumeric() or source.endswith('.txt') or (is_url and not is_file)
-    screenshot = source.lower().startswith('screen')
-    if is_url and is_file:
-        source = check_file(source)  # download
 
     # Directories
     save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
@@ -65,7 +68,6 @@ def run(
     stride, names, pt = model.stride, model.names, model.pt
     imgsz = check_img_size(imgsz, s=stride)  # check image size
 
-    bs = 1
     dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
 
     print(dataset)
@@ -84,15 +86,7 @@ def run(
         print("pred =",pred)
         pred = pred[0].detach().numpy()
         print(pred)
-
-        
-        import numpy as np
-        expected = [[0.103149414,167.59196,262.04965,352.6728,0.94617075,17.0],
-            [359.06604,187.69147,493.11407,300.52197,0.9350463,17.0],
-            [188.1949,173.86285,346.67218,312.97968,0.90036,17.0],
-            [0.035057068,166.53616,127.28791,301.4479,0.6030161,17.0],
-            [276.15863,185.0304,380.56927,281.01392,0.3605076,17.0]]
-        np.testing.assert_allclose(pred, expected)
+        np.testing.assert_allclose(pred, expected["c"])
 
 
 def parse_opt():
