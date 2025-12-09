@@ -911,7 +911,7 @@ def run():
           im /= 255  # 0 - 255 to 0.0 - 1.0
           if len(im.shape) == 3: im = im[None]  # expand for batch dim
 
-          pred = model(im, augment=False, visualize=False)
+          pred = model.model(im)
           pred = non_max_suppression(pred, 0.25, 0.45, None, False, 1000)
           pred = pred[0].detach().numpy()
 
