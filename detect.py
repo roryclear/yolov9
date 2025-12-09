@@ -340,6 +340,21 @@ class DDetect(nn.Module):
         y = torch.cat((dbox, cls.sigmoid()), 1)
         return y if self.export else (y, x)
 
+class DFL(nn.Module):
+    # DFL module
+    def __init__(self, c1=17):
+        return
+        super().__init__()
+        self.conv = nn.Conv2d(c1, 1, 1, bias=False).requires_grad_(False)
+        self.conv.weight.data[:] = nn.Parameter(torch.arange(c1, dtype=torch.float).view(1, c1, 1, 1)) # / 120.0
+        self.c1 = c1
+        # self.bn = nn.BatchNorm2d(4)
+
+    def forward(self, x):
+        b, c, a = x.shape  # batch, channels, anchors
+        return self.conv(x.view(b, 4, self.c1, a).transpose(2, 1).softmax(1)).view(b, 4, a)
+        # return self.conv(x.view(b, self.c1, 4, a).softmax(1)).view(b, 4, a)
+
 class CBLinear(nn.Module):
     def __init__(self, c1=1, c2s=1, k=1, s=1, p=None, g=1):  # ch_in, ch_outs, kernel, stride, padding, groups
         super(CBLinear, self).__init__()
@@ -409,6 +424,64 @@ class Silence(nn.Module):
     def forward(self, x):    
         return x
 
+class DWConv(Conv):
+    # Depth-wise convolution
+    def __init__(self, c1, c2, k=1, s=1, d=1, act=True):  # ch_in, ch_out, kernel, stride, dilation, activation
+        super().__init__(c1, c2, k, s, g=math.gcd(c1, c2), d=d, act=act)
+
+def fuse_conv_and_bn(conv, bn):
+    # Fuse Conv2d() and BatchNorm2d() layers https://tehnokv.com/posts/fusing-batchnorm-and-conv/
+    fusedconv = nn.Conv2d(conv.in_channels,
+                          conv.out_channels,
+                          kernel_size=conv.kernel_size,
+                          stride=conv.stride,
+                          padding=conv.padding,
+                          dilation=conv.dilation,
+                          groups=conv.groups,
+                          bias=True).requires_grad_(False).to(conv.weight.device)
+
+    # Prepare filters
+    w_conv = conv.weight.clone().view(conv.out_channels, -1)
+    w_bn = torch.diag(bn.weight.div(torch.sqrt(bn.eps + bn.running_var)))
+    fusedconv.weight.copy_(torch.mm(w_bn, w_conv).view(fusedconv.weight.shape))
+
+    # Prepare spatial bias
+    b_conv = torch.zeros(conv.weight.size(0), device=conv.weight.device) if conv.bias is None else conv.bias
+    b_bn = bn.bias - bn.weight.mul(bn.running_mean).div(torch.sqrt(bn.running_var + bn.eps))
+    fusedconv.bias.copy_(torch.mm(w_bn, b_conv.reshape(-1, 1)).reshape(-1) + b_bn)
+
+    return fusedconv
+
+class BaseModel(nn.Module):
+    # YOLO base model
+    def forward(self, x, profile=False, visualize=False):
+        return self._forward_once(x, profile, visualize)  # single-scale inference, train
+
+    def _forward_once(self, x, profile=False, visualize=False):
+        y, dt = [], []  # outputs
+        for m in self.model:
+            if m.f != -1:  # if not from previous layer
+                x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
+            if profile:
+                self._profile_one_layer(m, x, dt)
+            x = m(x)  # run
+            y.append(x if m.i in self.save else None)  # save output
+        return x
+
+    def fuse(self):  # fuse model Conv2d() + BatchNorm2d() layers
+        for m in self.model.modules():
+            if isinstance(m, (RepConvN)) and hasattr(m, 'fuse_convs'):
+                m.fuse_convs()
+                m.forward = m.forward_fuse  # update forward
+            if isinstance(m, (Conv, DWConv)) and hasattr(m, 'bn'):
+                m.conv = fuse_conv_and_bn(m.conv, m.bn)  # update conv
+                delattr(m, 'bn')  # remove batchnorm
+                m.forward = m.forward_fuse  # update forward
+        return self
+
+
+class DetectionModel(BaseModel): pass
+
 class DetectMultiBackend(nn.Module):
     # YOLO MultiBackend class for python inference on various backends
     def __init__(self, weights='yolo.pt', device=torch.device('cpu'), dnn=False, data=None, fp16=False, fuse=True):
@@ -420,10 +493,13 @@ class DetectMultiBackend(nn.Module):
         stride = 32  # default stride
         cuda = torch.cuda.is_available() and device.type != 'cpu'  # use CUDA
 
-        model = pickle.load(open(weights, 'rb'))
         #model = attempt_load(weights)
-
-        '''
+        model = pickle.load(open(weights, 'rb'))
+        
+        new_model = DetectionModel()
+        for k, v in vars(model).items(): setattr(new_model, k, v)
+        model = new_model
+        
         for i in range(len(model.model)):
           if model.model[i].__class__.__name__ == 'Conv':
             new_obj = Conv()
@@ -452,6 +528,8 @@ class DetectMultiBackend(nn.Module):
           elif model.model[i].__class__.__name__ == 'DDetect':
             new_obj = DDetect()
             for k, v in vars(model.model[i]).items(): setattr(new_obj, k, v)
+            new_obj.DFL = DFL()
+            for k, v in vars(model.model[i].DFL).items(): setattr(new_obj.DFL, k, v)
             model.model[i] = new_obj
           elif model.model[i].__class__.__name__ == 'ADown':
             new_obj = ADown()
@@ -472,7 +550,6 @@ class DetectMultiBackend(nn.Module):
           else:
             print(type(model.model[i]))
         with open(weights, 'wb') as f: pickle.dump(model, f)
-        '''
 
     
         stride = max(int(model.stride.max()), 32)  # model stride
