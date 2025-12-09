@@ -458,31 +458,14 @@ def fuse_conv_and_bn(conv, bn):
 
 class BaseModel(nn.Module):
     # YOLO base model
-    def forward(self, x, profile=False, visualize=False):
-        return self._forward_once(x, profile, visualize)  # single-scale inference, train
-
-    def _forward_once(self, x, profile=False, visualize=False):
-        y, dt = [], []  # outputs
-        for m in self.model:
-            if m.f != -1:  # if not from previous layer
-                x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
-            if profile:
-                self._profile_one_layer(m, x, dt)
-            x = m(x)  # run
-            y.append(x if m.i in self.save else None)  # save output
-        return x
-
-    def fuse(self):  # fuse model Conv2d() + BatchNorm2d() layers
-        for m in self.model.modules():
-            if isinstance(m, (RepConvN)) and hasattr(m, 'fuse_convs'):
-                m.fuse_convs()
-                m.forward = m.forward_fuse  # update forward
-            if isinstance(m, (Conv, DWConv)) and hasattr(m, 'bn'):
-                m.conv = fuse_conv_and_bn(m.conv, m.bn)  # update conv
-                delattr(m, 'bn')  # remove batchnorm
-                m.forward = m.forward_fuse  # update forward
-        return self
-
+    def forward(self, x):
+      y = []  # outputs
+      for m in self.model:
+          if m.f != -1:  # if not from previous layer
+              x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
+          x = m(x)  # run
+          y.append(x if m.i in self.save else None)  # save output
+      return x
 
 class DetectionModel(BaseModel): pass
 
@@ -575,18 +558,7 @@ class LoadImages:
         self.orientation = int(self.cap.get(cv2.CAP_PROP_ORIENTATION_META))  # rotation degrees
         # self.cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 0)  # disable https://github.com/ultralytics/yolov5/issues/8493
 
-    def _cv2_rotate(self, im):
-        # Rotate a cv2 video manually
-        if self.orientation == 0:
-            return cv2.rotate(im, cv2.ROTATE_90_CLOCKWISE)
-        elif self.orientation == 180:
-            return cv2.rotate(im, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        elif self.orientation == 90:
-            return cv2.rotate(im, cv2.ROTATE_180)
-        return im
 
-    def __len__(self):
-        return self.nf  # number of files
 
 def make_divisible(x, divisor):
     # Returns nearest x divisible by divisor
