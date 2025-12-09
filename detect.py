@@ -456,7 +456,7 @@ def fuse_conv_and_bn(conv, bn):
 
     return fusedconv
 
-class BaseModel(nn.Module):
+class DetectionModel(nn.Module):
     # YOLO base model
     def forward(self, x):
       y = []  # outputs
@@ -466,8 +466,6 @@ class BaseModel(nn.Module):
           x = m(x)  # run
           y.append(x if m.i in self.save else None)  # save output
       return x
-
-class DetectionModel(BaseModel): pass
 
 IMG_FORMATS = 'bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm'  # include image suffixes
 VID_FORMATS = 'asf', 'avi', 'gif', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 'ts', 'wmv'  # include video suffixes
@@ -882,5 +880,4 @@ def main():
   run()
 
 if __name__ == "__main__":
-
   main()
