@@ -564,9 +564,11 @@ def run():
 
           
           np.testing.assert_allclose(pred, expected[size])
+    print("passed")
 
 def main():
   run()
 
 if __name__ == "__main__":
+
   main()
