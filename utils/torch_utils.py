@@ -15,6 +15,7 @@ import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from utils.general import LOGGER, check_version, colorstr, file_date, git_describe
+from utils.lion import Lion
 
 LOCAL_RANK = int(os.getenv('LOCAL_RANK', -1))  # https://pytorch.org/docs/stable/elastic/run.html
 RANK = int(os.getenv('RANK', -1))
@@ -29,6 +30,57 @@ except ImportError:
 warnings.filterwarnings('ignore', message='User provided device_type of \'cuda\', but CUDA is not available. Disabling')
 warnings.filterwarnings('ignore', category=UserWarning)
 
+
+def smart_inference_mode(torch_1_9=check_version(torch.__version__, '1.9.0')):
+    # Applies torch.inference_mode() decorator if torch>=1.9.0 else torch.no_grad() decorator
+    def decorate(fn):
+        return (torch.inference_mode if torch_1_9 else torch.no_grad)()(fn)
+
+    return decorate
+
+
+def smartCrossEntropyLoss(label_smoothing=0.0):
+    # Returns nn.CrossEntropyLoss with label smoothing enabled for torch>=1.10.0
+    if check_version(torch.__version__, '1.10.0'):
+        return nn.CrossEntropyLoss(label_smoothing=label_smoothing)
+    if label_smoothing > 0:
+        LOGGER.warning(f'WARNING ⚠️ label smoothing {label_smoothing} requires torch>=1.10.0')
+    return nn.CrossEntropyLoss()
+
+
+def smart_DDP(model):
+    # Model DDP creation with checks
+    assert not check_version(torch.__version__, '1.12.0', pinned=True), \
+        'torch==1.12.0 torchvision==0.13.0 DDP training is not supported due to a known issue. ' \
+        'Please upgrade or downgrade torch to use DDP. See https://github.com/ultralytics/yolov5/issues/8395'
+    if check_version(torch.__version__, '1.11.0'):
+        return DDP(model, device_ids=[LOCAL_RANK], output_device=LOCAL_RANK, static_graph=True)
+    else:
+        return DDP(model, device_ids=[LOCAL_RANK], output_device=LOCAL_RANK)
+
+
+def reshape_classifier_output(model, n=1000):
+    # Update a TorchVision classification model to class count 'n' if required
+    from models.common import Classify
+    name, m = list((model.model if hasattr(model, 'model') else model).named_children())[-1]  # last module
+    if isinstance(m, Classify):  # YOLOv5 Classify() head
+        if m.linear.out_features != n:
+            m.linear = nn.Linear(m.linear.in_features, n)
+    elif isinstance(m, nn.Linear):  # ResNet, EfficientNet
+        if m.out_features != n:
+            setattr(model, name, nn.Linear(m.in_features, n))
+    elif isinstance(m, nn.Sequential):
+        types = [type(x) for x in m]
+        if nn.Linear in types:
+            i = types.index(nn.Linear)  # nn.Linear index
+            if m[i].out_features != n:
+                m[i] = nn.Linear(m[i].in_features, n)
+        elif nn.Conv2d in types:
+            i = types.index(nn.Conv2d)  # nn.Conv2d index
+            if m[i].out_channels != n:
+                m[i] = nn.Conv2d(m[i].in_channels, n, m[i].kernel_size, m[i].stride, bias=m[i].bias is not None)
+
+
 @contextmanager
 def torch_distributed_zero_first(local_rank: int):
     # Decorator to make all processes in distributed training wait for each local_master to do something
@@ -38,6 +90,18 @@ def torch_distributed_zero_first(local_rank: int):
     if local_rank == 0:
         dist.barrier(device_ids=[0])
 
+
+def device_count():
+    # Returns number of CUDA devices available. Safe version of torch.cuda.device_count(). Supports Linux and Windows
+    assert platform.system() in ('Linux', 'Windows'), 'device_count() only supported on Linux or Windows'
+    try:
+        cmd = 'nvidia-smi -L | wc -l' if platform.system() == 'Linux' else 'nvidia-smi -L | find /c /v ""'  # Windows
+        return int(subprocess.run(cmd, shell=True, capture_output=True, check=True).stdout.decode().split()[-1])
+    except Exception:
+        return 0
+
+
+def select_device(device='', batch_size=0, newline=True):
     # device = None or 'cpu' or 0 or '0' or '0,1,2,3'
     s = f'YOLO 🚀 {git_describe() or file_date()} Python-{platform.python_version()} torch-{torch.__version__} '
     device = str(device).strip().lower().replace('cuda:', '').replace('none', '')  # to string, 'cuda:0' to '0'
@@ -367,6 +431,8 @@ def smart_optimizer(model, name='Adam', lr=0.001, momentum=0.9, decay=1e-5):
         optimizer = torch.optim.RMSprop(g[2], lr=lr, momentum=momentum)
     elif name == 'SGD':
         optimizer = torch.optim.SGD(g[2], lr=lr, momentum=momentum, nesterov=True)
+    elif name == 'LION':
+        optimizer = Lion(g[2], lr=lr, betas=(momentum, 0.99), weight_decay=0.0)
     else:
         raise NotImplementedError(f'Optimizer {name} not implemented.')
 
