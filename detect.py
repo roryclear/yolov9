@@ -488,32 +488,15 @@ class DetectMultiBackend(nn.Module):
     # YOLO MultiBackend class for python inference on various backends
     def __init__(self, weights='yolo.pt', device=torch.device('cpu'), dnn=False, data=None, fp16=False, fuse=True):
         super().__init__()
-        w = str(weights[0] if isinstance(weights, list) else weights)
-        pt, jit, onnx, onnx_end2end, xml, engine, coreml, saved_model, pb, tflite, edgetpu, tfjs, paddle, triton = self._model_type(w)
-        fp16 &= pt or jit or onnx or engine  # FP16
-
+        self.pt = True
+        self.device = "cpu"
+        self.fp16 = False
         model = pickle.load(open(weights, 'rb'))
-    
-        stride = max(int(model.stride.max()), 32)  # model stride
-        names = model.module.names if hasattr(model, 'module') else model.names  # get class names
-        model.half() if fp16 else model.float()
+        self.stride = max(int(model.stride.max()), 32) 
+        self.names = model.module.names if hasattr(model, 'module') else model.names  # get class names
         self.model = model  # explicitly assign for to(), cpu(), cuda(), half()
-        self.__dict__.update(locals())  # assign all variables to self
 
-    def forward(self, im, augment=False, visualize=False):
-        y = self.model(im, augment=augment, visualize=visualize) if augment or visualize else self.model(im)
-        
-        if isinstance(y, (list, tuple)):
-            return self.from_numpy(y[0]) if len(y) == 1 else [self.from_numpy(x) for x in y]
-        else:
-            return self.from_numpy(y)
-
-    def from_numpy(self, x):
-        return torch.from_numpy(x).to(self.device) if isinstance(x, np.ndarray) else x
-
-    @staticmethod
-    def _model_type(p='path/to/model.pt'):
-        return [True, False, False, False, False, False, False, False, False, False, False, False, False, False]
+    def forward(self, im, augment=False, visualize=False): return self.model(im)
 
 IMG_FORMATS = 'bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm'  # include image suffixes
 VID_FORMATS = 'asf', 'avi', 'gif', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 'ts', 'wmv'  # include video suffixes
@@ -662,9 +645,7 @@ def non_max_suppression(
         prediction = prediction[0]  # select only inference output
 
     device = prediction.device
-    mps = 'mps' in device.type  # Apple MPS
-    if mps:  # MPS not fully supported yet, convert tensors to CPU before NMS
-        prediction = prediction.cpu()
+
     bs = prediction.shape[0]  # batch size
     nc = prediction.shape[1] - nm - 4  # number of classes
     mi = 4 + nc  # mask start index
@@ -716,11 +697,6 @@ def non_max_suppression(
         if classes is not None:
             x = x[(x[:, 5:6] == torch.tensor(classes, device=x.device)).any(1)]
 
-        # Apply finite constraint
-        # if not torch.isfinite(x).all():
-        #     x = x[torch.isfinite(x).all(1)]
-
-        # Check shape
         n = x.shape[0]  # number of boxes
         if not n:  # no boxes
             continue
@@ -735,20 +711,9 @@ def non_max_suppression(
         i = torchvision.ops.nms(boxes, scores, iou_thres)  # NMS
         if i.shape[0] > max_det:  # limit detections
             i = i[:max_det]
-        if merge and (1 < n < 3E3):  # Merge NMS (boxes merged using weighted mean)
-            # update boxes as boxes(i,4) = weights(i,n) * boxes(n,4)
-            iou = box_iou(boxes[i], boxes) > iou_thres  # iou matrix
-            weights = iou * scores[None]  # box weights
-            x[i, :4] = torch.mm(weights, x[:, :4]).float() / weights.sum(1, keepdim=True)  # merged boxes
-            if redundant:
-                i = i[iou.sum(1) > 1]  # require redundancy
 
         output[xi] = x[i]
-        if mps:
-            output[xi] = output[xi].to(device)
-        if (time.time() - t) > time_limit:
-            LOGGER.warning(f'WARNING ⚠️ NMS time limit {time_limit:.3f}s exceeded')
-            break  # time limit exceeded
+
 
     return output
 
