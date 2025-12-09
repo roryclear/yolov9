@@ -79,6 +79,8 @@ class Conv(nn.Module):
         self.conv = nn.Conv2d(c1, c2, k, s, autopad(k, p, d), groups=g, dilation=d, bias=False)
         self.bn = nn.BatchNorm2d(c2)
         self.act = self.default_act if act is True else act if isinstance(act, nn.Module) else nn.Identity()
+    
+    def forward_fuse(self, x): return self.act(self.conv(x))
 
 class ADown(nn.Module):
     def __init__(self, c1=1, c2=1):  # ch_in, ch_out, shortcut, kernels, groups, expand
@@ -495,7 +497,7 @@ class DetectMultiBackend(nn.Module):
 
         #model = attempt_load(weights)
         model = pickle.load(open(weights, 'rb'))
-        
+        '''
         new_model = DetectionModel()
         for k, v in vars(model).items(): setattr(new_model, k, v)
         model = new_model
@@ -551,6 +553,8 @@ class DetectMultiBackend(nn.Module):
             print(type(model.model[i]))
         with open(weights, 'wb') as f: pickle.dump(model, f)
 
+        #fix_pickle_classes(weights)
+        '''
     
         stride = max(int(model.stride.max()), 32)  # model stride
         names = model.module.names if hasattr(model, 'module') else model.names  # get class names
@@ -589,6 +593,104 @@ class DetectMultiBackend(nn.Module):
             return d['stride'], d['names']  # assign stride, names
         return None, None
 
+def fix_pickle_classes(pickle_file):
+    """
+    Properly fix pickle class references by loading and saving with correct classes.
+    """
+    print(f"Fixing pickle file: {pickle_file}")
+    
+    # First, backup the original
+    import shutil
+    backup = pickle_file + '.backup'
+    shutil.copy2(pickle_file, backup)
+    print(f"Created backup: {backup}")
+    
+    # Define all the replacement mappings
+    # Make sure these classes are defined in your script!
+    class_mappings = {
+        'Conv': Conv,  # Assuming my_Conv is defined
+        'AConv': AConv,
+        'ELAN1': ELAN1,
+        'RepNCSP': RepNCSP,
+        'RepNCSPELAN4': RepNCSPELAN4,
+        'SPPELAN': SPPELAN,
+        'Concat': Concat,
+        'DDetect': DDetect,
+        'ADown': ADown,
+        'CBLinear': CBLinear,
+        'CBFuse': CBFuse,
+        'Silence': Silence,
+        'RepConvN': RepConvN,
+        'SP': SP,
+        'DFL': DFL,
+        'RepNBottleneck': RepNBottleneck,
+    }
+    
+    # Custom unpickler that redirects class lookups
+    class ClassRedirectUnpickler(pickle.Unpickler):
+        def find_class(self, module, name):
+            # Redirect models.common classes to our local versions
+            if module == 'models.common' and name in class_mappings:
+                print(f"Redirecting: {module}.{name} -> local.{name}")
+                return class_mappings[name]
+            
+            # For other modules, try normal import
+            try:
+                return super().find_class(module, name)
+            except (AttributeError, ModuleNotFoundError):
+                # If module doesn't exist, try to import from current namespace
+                if module == 'models.common':
+                    # Try to get from class_mappings
+                    if name in class_mappings:
+                        return class_mappings[name]
+                
+                # Re-raise the original error
+                raise
+    
+    # Load the model with our custom unpickler
+    try:
+        with open(pickle_file, 'rb') as f:
+            # Read first few bytes to check protocol
+            header = f.read(4)
+            f.seek(0)
+            
+            if header.startswith(b'\x80'):  # Protocol 2, 3, 4
+                print("Detected pickle protocol 2-4")
+                model = ClassRedirectUnpickler(f).load()
+            elif header.startswith(b'\x93'):  # Protocol 5
+                print("Detected pickle protocol 5")
+                model = ClassRedirectUnpickler(f).load()
+            else:  # Protocol 0 or 1
+                print("Detected pickle protocol 0-1")
+                model = ClassRedirectUnpickler(f).load()
+                
+    except UnicodeDecodeError as e:
+        print(f"Unicode error - file may be corrupted: {e}")
+        print("Attempting recovery...")
+        
+        # Try brute force approach
+        with open(pickle_file, 'rb') as f:
+            data = f.read()
+        
+        # Look for the problematic byte and fix common pickle issues
+        # This is a heuristic fix for common pickle corruption
+        fixed_data = bytearray(data)
+        for i, byte in enumerate(fixed_data):
+            if byte == 0x94 and i > 0 and fixed_data[i-1] not in [0x93, 0x94]:
+                # 0x94 should only appear after 0x93 (STACK_GLOBAL) or another 0x94
+                # If not, it might be corruption from our string replacement
+                fixed_data[i] = ord('n')  # Replace with something safer
+        
+        # Try loading the fixed data
+        model = ClassRedirectUnpickler(io.BytesIO(bytes(fixed_data))).load()
+    
+    # Now save it back with proper pickling
+    with open(pickle_file, 'wb') as f:
+        # Use highest protocol for compatibility
+        pickle.dump(model, f, protocol=pickle.HIGHEST_PROTOCOL)
+    
+    print(f"Successfully fixed: {pickle_file}")
+    return model
 
 
 IMG_FORMATS = 'bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm'  # include image suffixes
