@@ -195,7 +195,9 @@ def run(
     for size in ["t", "s", "m", "c", "e"]:
         weights = f'./yolov9-{size}-converted.pt'
 
-        source = str(source)
+        source = "data/images/football.webp"
+        imgsz = (1280,1280)
+        device = "cpu"
 
         # Directories
         save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
@@ -216,10 +218,7 @@ def run(
 
           pred = model(im, augment=augment, visualize=visualize)
           pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
-          
-          print("pred =",pred)
           pred = pred[0].detach().numpy()
-          print(pred)
 
           
           np.testing.assert_allclose(pred, expected[size])
