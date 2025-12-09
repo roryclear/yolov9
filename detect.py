@@ -9,6 +9,7 @@ import glob
 import cv2
 import torch.nn as nn
 from urllib.parse import urlparse
+from copy import deepcopy
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLO root directory
@@ -58,24 +59,33 @@ def attempt_load(weights, device=None, inplace=True, fuse=True):
     assert all(model[0].nc == m.nc for m in model), f'Models have different class counts: {[m.nc for m in model]}'
     return model
 
+def autopad(k, p=None, d=1):  # kernel, padding, dilation
+    # Pad to 'same' shape outputs
+    if d > 1:
+        k = d * (k - 1) + 1 if isinstance(k, int) else [d * (x - 1) + 1 for x in k]  # actual kernel-size
+    if p is None:
+        p = k // 2 if isinstance(k, int) else [x // 2 for x in k]  # auto-pad
+    return p
+
+class Conv(nn.Module):
+    # Standard convolution with args(ch_in, ch_out, kernel, stride, padding, groups, dilation, activation)
+    default_act = nn.SiLU()  # default activation
+
+    def __init__(self, c1=1, c2=1, k=1, s=1, p=None, g=1, d=1, act=True):
+        super().__init__()
+        self.conv = nn.Conv2d(c1, c2, k, s, autopad(k, p, d), groups=g, dilation=d, bias=False)
+        self.bn = nn.BatchNorm2d(c2)
+        self.act = self.default_act if act is True else act if isinstance(act, nn.Module) else nn.Identity()
+
+    def forward(self, x):
+        return self.act(self.bn(self.conv(x)))
+
+    def forward_fuse(self, x):
+        return self.act(self.conv(x))
 
 class DetectMultiBackend(nn.Module):
     # YOLO MultiBackend class for python inference on various backends
     def __init__(self, weights='yolo.pt', device=torch.device('cpu'), dnn=False, data=None, fp16=False, fuse=True):
-        # Usage:
-        #   PyTorch:              weights = *.pt
-        #   TorchScript:                    *.torchscript
-        #   ONNX Runtime:                   *.onnx
-        #   ONNX OpenCV DNN:                *.onnx --dnn
-        #   OpenVINO:                       *_openvino_model
-        #   CoreML:                         *.mlmodel
-        #   TensorRT:                       *.engine
-        #   TensorFlow SavedModel:          *_saved_model
-        #   TensorFlow GraphDef:            *.pb
-        #   TensorFlow Lite:                *.tflite
-        #   TensorFlow Edge TPU:            *_edgetpu.tflite
-        #   PaddlePaddle:                   *_paddle_model
-
         super().__init__()
         w = str(weights[0] if isinstance(weights, list) else weights)
         pt, jit, onnx, onnx_end2end, xml, engine, coreml, saved_model, pb, tflite, edgetpu, tfjs, paddle, triton = self._model_type(w)
@@ -85,10 +95,18 @@ class DetectMultiBackend(nn.Module):
         cuda = torch.cuda.is_available() and device.type != 'cpu'  # use CUDA
 
         model = attempt_load(weights)
+        for i in range(len(model.model)):
+          if model.model[i].__class__.__name__ == 'Conv':
+            new_conv = Conv()
+            for k, v in vars(model.model[i]).items(): setattr(new_conv, k, v)
+            model.model[i] = new_conv
+
+
+            
         stride = max(int(model.stride.max()), 32)  # model stride
         names = model.module.names if hasattr(model, 'module') else model.names  # get class names
         model.half() if fp16 else model.float()
-        self.model = model  # explicitly assign for to(), cpu(), cuda(), half()       
+        self.model = model  # explicitly assign for to(), cpu(), cuda(), half()
         self.__dict__.update(locals())  # assign all variables to self
 
     def forward(self, im, augment=False, visualize=False):
