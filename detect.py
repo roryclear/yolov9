@@ -486,20 +486,6 @@ class BaseModel(nn.Module):
 
 class DetectionModel(BaseModel): pass
 
-class DetectMultiBackend(nn.Module):
-    # YOLO MultiBackend class for python inference on various backends
-    def __init__(self, weights='yolo.pt', device=torch.device('cpu'), dnn=False, data=None, fp16=False, fuse=True):
-        super().__init__()
-        self.pt = True
-        self.device = "cpu"
-        self.fp16 = False
-        model = pickle.load(open(weights, 'rb'))
-        self.stride = max(int(model.stride.max()), 32) 
-        self.names = model.module.names if hasattr(model, 'module') else model.names  # get class names
-        self.model = model  # explicitly assign for to(), cpu(), cuda(), half()
-
-    def forward(self, im, augment=False, visualize=False): return self.model(im)
-
 IMG_FORMATS = 'bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm'  # include image suffixes
 VID_FORMATS = 'asf', 'avi', 'gif', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 'ts', 'wmv'  # include video suffixes
 class LoadImages:
@@ -899,9 +885,10 @@ def run():
 
         source = "data/images/football.webp"
         imgsz = (1280,1280)
-        device = "cpu"
-        model = DetectMultiBackend(weights, device=device, dnn=False, data="ROOT", fp16=False)
-        stride, names, pt = model.stride, model.names, model.pt
+        model = model = pickle.load(open(weights, 'rb'))
+        model.device = "cpu"
+        model.fp16 = False
+        stride, pt = 32, True
         imgsz = check_img_size(imgsz, s=stride)  # check image size
 
         dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=1)
@@ -911,7 +898,7 @@ def run():
           im /= 255  # 0 - 255 to 0.0 - 1.0
           if len(im.shape) == 3: im = im[None]  # expand for batch dim
 
-          pred = model.model(im)
+          pred = model(im)
           pred = non_max_suppression(pred, 0.25, 0.45, None, False, 1000)
           pred = pred[0].detach().numpy()
 
