@@ -33,7 +33,14 @@ class Ensemble(nn.ModuleList):
         y = torch.cat(y, 1)  # nms ensemble
         return y, None  # inference, train output
 
-class tiny_Sequential(nn.Sequential): pass
+class tiny_Sequential():
+    def __init__(self): self.list = []
+    def append(self,x): self.list.append(x)
+    def __call__(self, x):
+      for i in range(len(self.list)): x = self.list[i](x)
+      return x
+    def __getitem__(self, idx):
+      return self.list[idx]
 
 def attempt_load(weights, device=None, inplace=True, fuse=True):
     model = Ensemble()
@@ -181,7 +188,6 @@ class tiny_ELAN1(nn.Module):
       return y
 
     def forward_split(self, x):
-        for _ in range(10): print("FFJUWIEFHEU")
         y = list(self.cv1(x).split((self.c, self.c), 1))
         y.extend(m(y[-1]) for m in [self.cv2, self.cv3])
         return self.cv4(torch.cat(y, 1))
@@ -825,7 +831,6 @@ class DetectionModel(nn.Module):
           for j in range(len(m.cv3)):
             tiny_seq_2 = tiny_Sequential()
             for k in range(len(m.cv3[j])):
-              print(type(m.cv3[j][k]))
               if type(m.cv3[j][k]) == Conv:
                 tiny_conv = tiny_Conv()
                 tiny_conv.tiny_conv = tiny_nn.Conv2d(m.cv3[j][k].conv.in_channels, m.cv3[j][k].conv.out_channels, m.cv3[j][k].conv.kernel_size, m.cv3[j][k].conv.stride, m.cv3[j][k].conv.padding, m.cv3[j][k].conv.dilation, m.cv3[j][k].conv.groups, True if m.cv3[j][k].conv.bias is not None else False)
@@ -850,6 +855,7 @@ class DetectionModel(nn.Module):
           tiny_cv2 = tiny_Sequential()
 
           tiny_seq = tiny_Sequential()
+          # todo? also not tiny
           tiny_seq.append(m.cv2[0][0])
           tiny_seq.append(m.cv2[0][1])
           tiny_seq.append(m.cv2[0][2])
@@ -1403,7 +1409,6 @@ def run():
           if len(im.shape) == 3: im = im[None]  # expand for batch dim
 
           model.convert()
-
           #pickle.dump(model, open(f'yolov9-{size}-tiny.pt', 'wb'))
 
           pred = model(im)
