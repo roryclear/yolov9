@@ -891,8 +891,12 @@ class DetectionModel(nn.Module):
           tiny_rn.cv2.tiny_conv = tiny_nn.Conv2d(m.cv2[0].cv2.conv.in_channels, m.cv2[0].cv2.conv.out_channels, m.cv2[0].cv2.conv.kernel_size, m.cv2[0].cv2.conv.stride, m.cv2[0].cv2.conv.padding, m.cv2[0].cv2.conv.dilation, m.cv2[0].cv2.conv.groups, True if m.cv2[0].cv2.conv.bias is not None else False)
           tiny_rn.cv2.tiny_conv.weight = tiny_Tensor(m.cv2[0].cv2.conv.weight.detach().numpy().copy())
           tiny_rn.cv2.tiny_conv.bias = tiny_Tensor(m.cv2[0].cv2.conv.bias.detach().numpy().copy())
+          tiny_rn.cv3 = tiny_Conv()
+          tiny_rn.cv3.tiny_conv = tiny_nn.Conv2d(m.cv2[0].cv3.conv.in_channels, m.cv2[0].cv3.conv.out_channels, m.cv2[0].cv3.conv.kernel_size, m.cv2[0].cv3.conv.stride, m.cv2[0].cv3.conv.padding, m.cv2[0].cv3.conv.dilation, m.cv2[0].cv3.conv.groups, True if m.cv2[0].cv3.conv.bias is not None else False)
+          tiny_rn.cv3.tiny_conv.weight = tiny_Tensor(m.cv2[0].cv3.conv.weight.detach().numpy().copy())
+          tiny_rn.cv3.tiny_conv.bias = tiny_Tensor(m.cv2[0].cv3.conv.bias.detach().numpy().copy())
 
-          tiny_rn.cv3 = m.cv2[0].cv3
+
           tiny_rn.m = m.cv2[0].m
           tiny_seq.append(tiny_rn)
 
@@ -915,8 +919,10 @@ class DetectionModel(nn.Module):
           tiny_rn.cv2.tiny_conv = tiny_nn.Conv2d(m.cv3[0].cv2.conv.in_channels, m.cv3[0].cv2.conv.out_channels, m.cv3[0].cv2.conv.kernel_size, m.cv3[0].cv2.conv.stride, m.cv3[0].cv2.conv.padding, m.cv3[0].cv2.conv.dilation, m.cv3[0].cv2.conv.groups, True if m.cv3[0].cv2.conv.bias is not None else False)
           tiny_rn.cv2.tiny_conv.weight = tiny_Tensor(m.cv3[0].cv2.conv.weight.detach().numpy().copy())
           tiny_rn.cv2.tiny_conv.bias = tiny_Tensor(m.cv3[0].cv2.conv.bias.detach().numpy().copy())
-
-          tiny_rn.cv3 = m.cv3[0].cv3
+          tiny_rn.cv3 = tiny_Conv()
+          tiny_rn.cv3.tiny_conv = tiny_nn.Conv2d(m.cv3[0].cv3.conv.in_channels, m.cv3[0].cv3.conv.out_channels, m.cv3[0].cv3.conv.kernel_size, m.cv3[0].cv3.conv.stride, m.cv3[0].cv3.conv.padding, m.cv3[0].cv3.conv.dilation, m.cv3[0].cv3.conv.groups, True if m.cv3[0].cv3.conv.bias is not None else False)
+          tiny_rn.cv3.tiny_conv.weight = tiny_Tensor(m.cv3[0].cv3.conv.weight.detach().numpy().copy())
+          tiny_rn.cv3.tiny_conv.bias = tiny_Tensor(m.cv3[0].cv3.conv.bias.detach().numpy().copy())
           tiny_rn.m = m.cv3[0].m
           tiny_seq.append(tiny_rn)
 
