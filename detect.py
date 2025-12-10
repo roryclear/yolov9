@@ -472,7 +472,7 @@ class DetectionModel(nn.Module):
           tiny._forward_hooks = m._forward_hooks
           tiny._forward_pre_hooks = m._forward_pre_hooks
 
-          tiny.conv = nn.Conv2d(m.conv.in_channels, m.conv.out_channels, m.conv.kernel_size, m.conv.stride, m.conv.padding, m.conv.dilation, m.conv.groups, True if m.conv.bias is not None else False)
+          tiny.conv = tiny_nn.Conv2d(m.conv.in_channels, m.conv.out_channels, m.conv.kernel_size, m.conv.stride, m.conv.padding, m.conv.dilation, m.conv.groups, True if m.conv.bias is not None else False)
           tiny.conv.weight = m.conv.weight
           tiny.conv.bias = m.conv.bias
 
