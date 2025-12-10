@@ -152,7 +152,9 @@ class ELAN1(nn.Module):
         self.cv4 = Conv(c3+(2*c4), c2, 1, 1)
 
     def forward(self, x):
-        y = list(self.cv1(x).chunk(2, 1))
+        y = self.cv1(x)
+        y = y.chunk(2,1)
+        y = list(y)
         y.extend(m(y[-1]) for m in [self.cv2, self.cv3])
         return self.cv4(torch.cat(y, 1))
 
@@ -160,6 +162,31 @@ class ELAN1(nn.Module):
         y = list(self.cv1(x).split((self.c, self.c), 1))
         y.extend(m(y[-1]) for m in [self.cv2, self.cv3])
         return self.cv4(torch.cat(y, 1))
+
+class tiny_ELAN1(nn.Module):
+    def __init__(self, c1=1, c2=1, c3=1, c4=1):  # ch_in, ch_out, number, shortcut, groups, expansion
+        super().__init__()
+
+    def forward(self, x):
+      if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
+      y = self.cv1(x)
+      y = tiny_Tensor(y.detach().numpy())
+      y = y.chunk(2,1)
+      y = list(y)
+      y.extend(m(y[-1]) for m in [self.cv2, self.cv3])
+      y[-1] = tiny_Tensor(y[-1].detach().numpy())
+      y[-2] = tiny_Tensor(y[-2].detach().numpy())
+      y = tiny_Tensor.cat(y[0], y[1], y[2], y[3], dim=1)
+      y = self.cv4(y)
+      #y = Tensor(y.numpy())
+      return y
+
+    def forward_split(self, x):
+        for _ in range(10): print("FFJUWIEFHEU")
+        y = list(self.cv1(x).split((self.c, self.c), 1))
+        y.extend(m(y[-1]) for m in [self.cv2, self.cv3])
+        return self.cv4(torch.cat(y, 1))
+
 
 class RepNBottleneck(nn.Module):
     # Standard bottleneck
@@ -561,6 +588,42 @@ class DetectionModel(nn.Module):
           tiny_cv2.tiny_conv.weight = tiny_Tensor(m.cv2.conv.weight.detach().numpy().copy())
           tiny_cv2.tiny_conv.bias = tiny_Tensor(m.cv2.conv.bias.detach().numpy().copy())
           tiny.cv2 = tiny_cv2
+
+          self.model[i] = tiny
+          m = tiny
+          
+        elif type(m) == ELAN1:
+          tiny = tiny_ELAN1()
+          tiny.f = m.f
+          tiny._backward_hooks = m._backward_hooks
+          tiny._backward_pre_hooks = m._backward_pre_hooks
+          tiny._forward_hooks = m._forward_hooks
+          tiny._forward_pre_hooks = m._forward_pre_hooks
+
+
+          tiny_cv1 = tiny_Conv()
+          tiny_cv1.tiny_conv = tiny_nn.Conv2d(m.cv1.conv.in_channels, m.cv1.conv.out_channels, m.cv1.conv.kernel_size, m.cv1.conv.stride, m.cv1.conv.padding, m.cv1.conv.dilation, m.cv1.conv.groups, True if m.cv1.conv.bias is not None else False)
+          tiny_cv1.tiny_conv.weight = tiny_Tensor(m.cv1.conv.weight.detach().numpy().copy())
+          tiny_cv1.tiny_conv.bias = tiny_Tensor(m.cv1.conv.bias.detach().numpy().copy())
+          tiny.cv1 = tiny_cv1
+
+          tiny_cv2 = tiny_Conv()
+          tiny_cv2.tiny_conv = tiny_nn.Conv2d(m.cv2.conv.in_channels, m.cv2.conv.out_channels, m.cv2.conv.kernel_size, m.cv2.conv.stride, m.cv2.conv.padding, m.cv2.conv.dilation, m.cv2.conv.groups, True if m.cv2.conv.bias is not None else False)
+          tiny_cv2.tiny_conv.weight = tiny_Tensor(m.cv2.conv.weight.detach().numpy().copy())
+          tiny_cv2.tiny_conv.bias = tiny_Tensor(m.cv2.conv.bias.detach().numpy().copy())
+          tiny.cv2 = tiny_cv2
+
+          tiny_cv3 = tiny_Conv()
+          tiny_cv3.tiny_conv = tiny_nn.Conv2d(m.cv3.conv.in_channels, m.cv3.conv.out_channels, m.cv3.conv.kernel_size, m.cv3.conv.stride, m.cv3.conv.padding, m.cv3.conv.dilation, m.cv3.conv.groups, True if m.cv3.conv.bias is not None else False)
+          tiny_cv3.tiny_conv.weight = tiny_Tensor(m.cv3.conv.weight.detach().numpy().copy())
+          tiny_cv3.tiny_conv.bias = tiny_Tensor(m.cv3.conv.bias.detach().numpy().copy())
+          tiny.cv3 = tiny_cv3
+
+          tiny_cv4 = tiny_Conv()
+          tiny_cv4.tiny_conv = tiny_nn.Conv2d(m.cv4.conv.in_channels, m.cv4.conv.out_channels, m.cv4.conv.kernel_size, m.cv4.conv.stride, m.cv4.conv.padding, m.cv4.conv.dilation, m.cv4.conv.groups, True if m.cv4.conv.bias is not None else False)
+          tiny_cv4.tiny_conv.weight = tiny_Tensor(m.cv4.conv.weight.detach().numpy().copy())
+          tiny_cv4.tiny_conv.bias = tiny_Tensor(m.cv4.conv.bias.detach().numpy().copy())
+          tiny.cv4 = tiny_cv4
 
           self.model[i] = tiny
           m = tiny
