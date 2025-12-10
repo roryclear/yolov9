@@ -480,13 +480,16 @@ class DetectionModel(nn.Module):
           tiny.tiny_conv.weight = tiny_Tensor(m.conv.weight.detach().numpy().copy())
           tiny.tiny_conv.bias = tiny_Tensor(m.conv.bias.detach().numpy().copy())
 
-          '''
-          tiny.conv = tiny_nn.Conv2d(m.conv.in_channels, m.conv.out_channels, m.conv.kernel_size, m.conv.stride, m.conv.padding, m.conv.dilation, m.conv.groups, True if m.conv.bias is not None else False)
-          tiny.conv.weight = tiny_Tensor(m.conv.weight.detach().numpy().copy())
-          tiny.conv.bias = tiny_Tensor(m.conv.bias.detach().numpy().copy())
-          '''
           self.model[i] = tiny
           m = self.model[i]
+        elif type(m) == AConv:
+          tiny = tiny_Conv()
+          tiny.tiny_conv = tiny_nn.Conv2d(m.cv1.conv.in_channels, m.cv1.conv.out_channels, m.cv1.conv.kernel_size, m.cv1.conv.stride, m.cv1.conv.padding, m.cv1.conv.dilation, m.cv1.conv.groups, True if m.cv1.conv.bias is not None else False)
+          tiny.tiny_conv.weight = tiny_Tensor(m.cv1.conv.weight.detach().numpy().copy())
+          tiny.tiny_conv.bias = tiny_Tensor(m.cv1.conv.bias.detach().numpy().copy())
+          self.model[i].cv1 = tiny
+          m = self.model[i]
+
         if m.f != -1:  # if not from previous layer
           x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]
         x = m(x)
