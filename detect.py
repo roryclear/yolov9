@@ -104,6 +104,25 @@ class ADown(nn.Module):
         x2 = self.cv2(x2)
         return torch.cat((x1, x2), 1)
 
+class tiny_ADown(nn.Module):
+    def __init__(self, c1=1, c2=1): super().__init__()
+    def forward(self, x):
+      if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
+      x = tiny_Tensor.avg_pool2d(x, 2, 1, 1, 0, False, True)
+      x1,x2 = x.chunk(2, 1)
+      x1 = self.cv1(x1)
+      x1 = tiny_Tensor(x1.detach().numpy())
+      x2 = tiny_Tensor.max_pool2d(x2, kernel_size=3, stride=2, dilation=1, padding=1)
+      x2 = self.cv2(x2)
+      x2 = tiny_Tensor(x2.detach().numpy())
+      x = tiny_Tensor.cat(x1, x2, dim=1)
+      return Tensor(x.numpy())
+
+#torch.nn.functional.max_pool2d(input, kernel_size, stride=None, padding=0, dilation=1, ceil_mode=False, return_indices=False)[source]
+#  def max_pool2d(self, kernel_size:tuple[int, ...]=(2,2), stride=None, dilation=1, padding:int|tuple[int, ...]=0,
+#                 ceil_mode=False, return_indices=False) -> Tensor | tuple[Tensor, Tensor]:
+
+
 class AConv(nn.Module):
     def __init__(self, c1=1, c2=1):  # ch_in, ch_out, shortcut, kernels, groups, expand
         super().__init__()
@@ -523,6 +542,28 @@ class DetectionModel(nn.Module):
           tiny.cv1 = tiny_cv1
           self.model[i] = tiny
           m = self.model[i]
+        elif type(m) == ADown:
+          tiny = tiny_ADown()
+          tiny.f = m.f
+          tiny._backward_hooks = m._backward_hooks
+          tiny._backward_pre_hooks = m._backward_pre_hooks
+          tiny._forward_hooks = m._forward_hooks
+          tiny._forward_pre_hooks = m._forward_pre_hooks
+
+          tiny_cv1 = tiny_Conv()
+          tiny_cv1.tiny_conv = tiny_nn.Conv2d(m.cv1.conv.in_channels, m.cv1.conv.out_channels, m.cv1.conv.kernel_size, m.cv1.conv.stride, m.cv1.conv.padding, m.cv1.conv.dilation, m.cv1.conv.groups, True if m.cv1.conv.bias is not None else False)
+          tiny_cv1.tiny_conv.weight = tiny_Tensor(m.cv1.conv.weight.detach().numpy().copy())
+          tiny_cv1.tiny_conv.bias = tiny_Tensor(m.cv1.conv.bias.detach().numpy().copy())
+          tiny.cv1 = tiny_cv1
+
+          tiny_cv2 = tiny_Conv()
+          tiny_cv2.tiny_conv = tiny_nn.Conv2d(m.cv2.conv.in_channels, m.cv2.conv.out_channels, m.cv2.conv.kernel_size, m.cv2.conv.stride, m.cv2.conv.padding, m.cv2.conv.dilation, m.cv2.conv.groups, True if m.cv2.conv.bias is not None else False)
+          tiny_cv2.tiny_conv.weight = tiny_Tensor(m.cv2.conv.weight.detach().numpy().copy())
+          tiny_cv2.tiny_conv.bias = tiny_Tensor(m.cv2.conv.bias.detach().numpy().copy())
+          tiny.cv2 = tiny_cv2
+
+          self.model[i] = tiny
+          m = tiny
 
         if m.f != -1:  # if not from previous layer
           x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]
