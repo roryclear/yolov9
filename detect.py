@@ -1340,7 +1340,7 @@ expected["e"] = [[118.6095,186.78137,479.75702,778.1138,0.9503603,0.0,],
 def run():
     
     for size in ["t", "s", "m", "c", "e"]:
-        weights = f'./yolov9-{size}-converted.pt'
+        weights = f'./yolov9-{size}-tiny.pt'
 
         source = "data/images/football.webp"
         imgsz = (1280,1280)
@@ -1357,7 +1357,8 @@ def run():
           im /= 255  # 0 - 255 to 0.0 - 1.0
           if len(im.shape) == 3: im = im[None]  # expand for batch dim
 
-          model.convert()
+          #model.convert()
+          #pickle.dump(model, open(f'yolov9-{size}-tiny.pt', 'wb'))
 
           pred = model(im)
           pred = non_max_suppression(pred, 0.25, 0.45, None, False, 1000)
