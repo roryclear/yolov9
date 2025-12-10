@@ -673,8 +673,7 @@ def fuse_conv_and_bn(conv, bn):
     return fusedconv
 
 class DetectionModel(nn.Module):
-    def forward(self, x):
-      y = []  # outputs
+    def convert(self):
       for i in range(len(self.model)):
         m = self.model[i]
         if type(m) == Conv:
@@ -939,9 +938,16 @@ class DetectionModel(nn.Module):
           tiny_seq_cv4.tiny_conv.bias = tiny_Tensor(m.cv4.conv.bias.detach().numpy().copy())
           tiny.cv4 = tiny_seq_cv4
 
-
+          
           self.model[i] = tiny
           m = tiny
+
+
+    def forward(self, x):
+      y = []  # outputs
+      for i in range(len(self.model)):
+        m = self.model[i]
+        print(type(m))
         #print(type(m))
         if m.f != -1:  # if not from previous layer
           x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]
@@ -1350,6 +1356,8 @@ def run():
           im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
           im /= 255  # 0 - 255 to 0.0 - 1.0
           if len(im.shape) == 3: im = im[None]  # expand for batch dim
+
+          model.convert()
 
           pred = model(im)
           pred = non_max_suppression(pred, 0.25, 0.45, None, False, 1000)
