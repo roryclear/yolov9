@@ -14,6 +14,7 @@ import pickle
 import torch.nn.functional as F
 from torch import Tensor
 from tinygrad import nn as tiny_nn, Tensor as tiny_Tensor
+from tinygrad.helpers import fetch
 
 TORCH_1_10 = False
 FILE = Path(__file__).resolve()
@@ -434,6 +435,21 @@ class DFL(nn.Module):
         b, c, a = x.shape  # batch, channels, anchors
         return self.conv(x.view(b, 4, self.c1, a).transpose(2, 1).softmax(1)).view(b, 4, a)
         # return self.conv(x.view(b, self.c1, 4, a).softmax(1)).view(b, 4, a)
+
+class tiny_DFL(nn.Module):
+    # DFL module
+    def __init__(self, c1=17):
+        super().__init__()
+        self.conv = nn.Conv2d(c1, 1, 1, bias=False).requires_grad_(False)
+        self.conv.weight.data[:] = nn.Parameter(torch.arange(c1, dtype=torch.float).view(1, c1, 1, 1)) # / 120.0
+        self.c1 = c1
+        # self.bn = nn.BatchNorm2d(4)
+
+    def forward(self, x):
+        b, c, a = x.shape  # batch, channels, anchors
+        return self.conv(x.view(b, 4, self.c1, a).transpose(2, 1).softmax(1)).view(b, 4, a)
+        # return self.conv(x.view(b, self.c1, 4, a).softmax(1)).view(b, 4, a)
+
 
 class Silence(nn.Module):
     def __init__(self):
@@ -919,10 +935,49 @@ def run():
           pred = model(im)
           pred = non_max_suppression(pred, 0.25, 0.45, None, False, 1000)
           pred = pred[0].detach().numpy()
-
-          
           np.testing.assert_allclose(pred, expected[size], atol=1e-4, rtol=1e-3)
+
+          class_labels = fetch('https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names').read_text().split("\n")
+          draw_bounding_boxes_and_save(source, f"out_{size}.jpg", pred, class_labels)
     print("passed")
+
+from collections import defaultdict
+def draw_bounding_boxes_and_save(orig_img_path, output_img_path, predictions, class_labels):
+  color_dict = {label: tuple((((i+1) * 50) % 256, ((i+1) * 100) % 256, ((i+1) * 150) % 256)) for i, label in enumerate(class_labels)}
+  font = cv2.FONT_HERSHEY_SIMPLEX
+
+  def is_bright_color(color):
+    r, g, b = color
+    brightness = (r * 299 + g * 587 + b * 114) / 1000
+    return brightness > 127
+
+  orig_img = cv2.imread(orig_img_path) if not isinstance(orig_img_path, np.ndarray) else cv2.imdecode(orig_img_path, 1)
+  height, width, _ = orig_img.shape
+  box_thickness = int((height + width) / 400)
+  font_scale = (height + width) / 2500
+  object_count = defaultdict(int)
+
+  for pred in predictions:
+    x1, y1, x2, y2, conf, class_id = pred
+    if conf == 0: continue
+    x1, y1, x2, y2, class_id = map(int, (x1, y1, x2, y2, class_id))
+    color = color_dict[class_labels[class_id]]
+    cv2.rectangle(orig_img, (x1, y1), (x2, y2), color, box_thickness)
+    label = f"{class_labels[class_id]} {conf:.2f}"
+    text_size, _ = cv2.getTextSize(label, font, font_scale, 1)
+    label_y, bg_y = (y1 - 4, y1 - text_size[1] - 4) if y1 - text_size[1] - 4 > 0 else (y1 + text_size[1], y1)
+    cv2.rectangle(orig_img, (x1, bg_y), (x1 + text_size[0], bg_y + text_size[1]), color, -1)
+    font_color = (0, 0, 0) if is_bright_color(color) else (255, 255, 255)
+    cv2.putText(orig_img, label, (x1, label_y), font, font_scale, font_color, 1, cv2.LINE_AA)
+    object_count[class_labels[class_id]] += 1
+
+  print("Objects detected:")
+  for obj, count in object_count.items():
+    print(f"- {obj}: {count}")
+
+  cv2.imwrite(output_img_path, orig_img)
+  print(f'saved detections at {output_img_path}')
+
 
 def main():
   run()
