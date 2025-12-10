@@ -895,10 +895,10 @@ class DetectionModel(nn.Module):
           tiny_rn.cv3.tiny_conv.weight = tiny_Tensor(m.cv2[0].cv3.conv.weight.detach().numpy().copy())
           tiny_rn.cv3.tiny_conv.bias = tiny_Tensor(m.cv2[0].cv3.conv.bias.detach().numpy().copy())
 
-
-          tiny_rn.m = m.cv2[0].m # todo not tiny
+          tiny_seq_2 = tiny_Sequential()
+          for j in range(len(m.cv2[0].m)): tiny_seq_2.append(m.cv2[0].m[j]) # todo
+          tiny_rn.m = tiny_seq_2
           tiny_seq.append(tiny_rn)
-
 
           tiny_seq_cv2 = tiny_Conv()
           tiny_seq_cv2.tiny_conv = tiny_nn.Conv2d(m.cv2[1].conv.in_channels, m.cv2[1].conv.out_channels, m.cv2[1].conv.kernel_size, m.cv2[1].conv.stride, m.cv2[1].conv.padding, m.cv2[1].conv.dilation, m.cv2[1].conv.groups, True if m.cv2[1].conv.bias is not None else False)
@@ -922,7 +922,10 @@ class DetectionModel(nn.Module):
           tiny_rn.cv3.tiny_conv = tiny_nn.Conv2d(m.cv3[0].cv3.conv.in_channels, m.cv3[0].cv3.conv.out_channels, m.cv3[0].cv3.conv.kernel_size, m.cv3[0].cv3.conv.stride, m.cv3[0].cv3.conv.padding, m.cv3[0].cv3.conv.dilation, m.cv3[0].cv3.conv.groups, True if m.cv3[0].cv3.conv.bias is not None else False)
           tiny_rn.cv3.tiny_conv.weight = tiny_Tensor(m.cv3[0].cv3.conv.weight.detach().numpy().copy())
           tiny_rn.cv3.tiny_conv.bias = tiny_Tensor(m.cv3[0].cv3.conv.bias.detach().numpy().copy())
-          tiny_rn.m = m.cv3[0].m # TODO, not tiny!
+          
+          tiny_seq_2 = tiny_Sequential()
+          for j in range(len(m.cv3[0].m)): tiny_seq_2.append(m.cv3[0].m[j]) # todo
+          tiny_rn.m = tiny_seq_2
           tiny_seq.append(tiny_rn)
 
           tiny_seq_cv3 = tiny_Conv()
