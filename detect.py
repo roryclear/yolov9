@@ -366,6 +366,18 @@ class Concat(nn.Module):
     def forward(self, x):
         return torch.cat(x, self.d)
 
+class tiny_Concat(nn.Module):
+    # Concatenate a list of tensors along dimension
+    def __init__(self, dimension=1):
+        super().__init__()
+
+    def forward(self, x):
+        if type(x[0]) != tiny_Tensor: x[0] = tiny_Tensor(x[0].detach().numpy())
+        if type(x[1]) != tiny_Tensor: x[1] = tiny_Tensor(x[1].detach().numpy())
+        y = tiny_Tensor.cat(x[0],x[1],dim=self.d)
+        return Tensor(y.numpy())
+
+
 class DDetect(nn.Module):
     # YOLO Detect head for detection models
     dynamic = False  # force grid reconstruction
@@ -655,7 +667,18 @@ class DetectionModel(nn.Module):
 
           self.model[i] = tiny
           m = tiny
-        
+        elif type(m) == Concat:
+          tiny = tiny_Concat()
+          tiny.f = m.f
+          tiny._backward_hooks = m._backward_hooks
+          tiny._backward_pre_hooks = m._backward_pre_hooks
+          tiny._forward_hooks = m._forward_hooks
+          tiny._forward_pre_hooks = m._forward_pre_hooks
+
+          tiny.d = m.d
+
+          self.model[i] = tiny
+          m = tiny
         if m.f != -1:  # if not from previous layer
           x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]
         x = m(x)
