@@ -200,6 +200,14 @@ class RepNBottleneck(nn.Module):
 
     def forward(self, x):
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+    
+class tiny_RepNBottleneck(nn.Module):
+    # Standard bottleneck
+    def __init__(self):  # ch_in, ch_out, shortcut, kernels, groups, expand
+        super().__init__()
+
+    def forward(self, x):
+        return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
 
 class RepConvN(nn.Module):
     """RepConv is a basic rep-style block, including training and deploy status
@@ -896,7 +904,12 @@ class DetectionModel(nn.Module):
           tiny_rn.cv3.tiny_conv.bias = tiny_Tensor(m.cv2[0].cv3.conv.bias.detach().numpy().copy())
 
           tiny_seq_2 = tiny_Sequential()
-          for j in range(len(m.cv2[0].m)): tiny_seq_2.append(m.cv2[0].m[j]) # todo
+          for j in range(len(m.cv2[0].m)):
+            tiny_btl = tiny_RepNBottleneck()
+            tiny_btl.cv1 = m.cv2[0].m[j].cv1
+            tiny_btl.cv2 = m.cv2[0].m[j].cv2
+            tiny_btl.add = m.cv2[0].m[j].add
+            tiny_seq_2.append(tiny_btl) # todo
           tiny_rn.m = tiny_seq_2
           tiny_seq.append(tiny_rn)
 
@@ -924,7 +937,12 @@ class DetectionModel(nn.Module):
           tiny_rn.cv3.tiny_conv.bias = tiny_Tensor(m.cv3[0].cv3.conv.bias.detach().numpy().copy())
           
           tiny_seq_2 = tiny_Sequential()
-          for j in range(len(m.cv3[0].m)): tiny_seq_2.append(m.cv3[0].m[j]) # todo
+          for j in range(len(m.cv3[0].m)):
+            tiny_btl = tiny_RepNBottleneck()
+            tiny_btl.cv1 = m.cv3[0].m[j].cv1
+            tiny_btl.cv2 = m.cv3[0].m[j].cv2
+            tiny_btl.add = m.cv3[0].m[j].add
+            tiny_seq_2.append(tiny_btl) # todo
           tiny_rn.m = tiny_seq_2
           tiny_seq.append(tiny_rn)
 
