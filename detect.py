@@ -906,7 +906,10 @@ class DetectionModel(nn.Module):
           tiny_seq_2 = tiny_Sequential()
           for j in range(len(m.cv2[0].m)):
             tiny_btl = tiny_RepNBottleneck()
-            tiny_btl.cv1 = m.cv2[0].m[j].cv1
+            tiny_btl.cv1 = tiny_Conv()
+            tiny_btl.cv1.tiny_conv = tiny_nn.Conv2d(m.cv2[0].m[j].cv1.conv.in_channels, m.cv2[0].m[j].cv1.conv.out_channels, m.cv2[0].m[j].cv1.conv.kernel_size, m.cv2[0].m[j].cv1.conv.stride, m.cv2[0].m[j].cv1.conv.padding, m.cv2[0].m[j].cv1.conv.dilation, m.cv2[0].m[j].cv1.conv.groups, True if m.cv2[0].m[j].cv1.conv.bias is not None else False)
+            tiny_btl.cv1.tiny_conv.weight = tiny_Tensor(m.cv2[0].m[j].cv1.conv.weight.detach().numpy().copy())
+            tiny_btl.cv1.tiny_conv.bias = tiny_Tensor(m.cv2[0].m[j].cv1.conv.bias.detach().numpy().copy())
             tiny_btl.cv2 = m.cv2[0].m[j].cv2
             tiny_btl.add = m.cv2[0].m[j].add
             tiny_seq_2.append(tiny_btl) # todo
@@ -939,7 +942,10 @@ class DetectionModel(nn.Module):
           tiny_seq_2 = tiny_Sequential()
           for j in range(len(m.cv3[0].m)):
             tiny_btl = tiny_RepNBottleneck()
-            tiny_btl.cv1 = m.cv3[0].m[j].cv1
+            tiny_btl.cv1 = tiny_Conv()
+            tiny_btl.cv1.tiny_conv = tiny_nn.Conv2d(m.cv3[0].m[j].cv1.conv.in_channels, m.cv3[0].m[j].cv1.conv.out_channels, m.cv3[0].m[j].cv1.conv.kernel_size, m.cv3[0].m[j].cv1.conv.stride, m.cv3[0].m[j].cv1.conv.padding, m.cv3[0].m[j].cv1.conv.dilation, m.cv3[0].m[j].cv1.conv.groups, True if m.cv3[0].m[j].cv1.conv.bias is not None else False)
+            tiny_btl.cv1.tiny_conv.weight = tiny_Tensor(m.cv3[0].m[j].cv1.conv.weight.detach().numpy().copy())
+            tiny_btl.cv1.tiny_conv.bias = tiny_Tensor(m.cv3[0].m[j].cv1.conv.bias.detach().numpy().copy())
             tiny_btl.cv2 = m.cv3[0].m[j].cv2
             tiny_btl.add = m.cv3[0].m[j].add
             tiny_seq_2.append(tiny_btl) # todo
