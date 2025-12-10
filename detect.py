@@ -467,6 +467,34 @@ class CBFuse(nn.Module):
         out = torch.sum(torch.stack(res + xs[-1:]), dim=0)
         return out
 
+class tiny_CBFuse(nn.Module):
+    def __init__(self):
+        super(tiny_CBFuse, self).__init__()
+
+    def forward(self, xs):
+        for i in range(len(xs)):
+          if type(xs[i]) == tuple:
+            xs[i] = list(xs[i])
+            for j in range(len(xs[i])):
+              if type(xs[i][j]) != tiny_Tensor: xs[i][j] = tiny_Tensor(xs[i][j].detach().numpy())
+            xs[i] = tuple(xs[i])
+          else:
+            xs[i] = tiny_Tensor(xs[i].detach().numpy())
+        target_size = xs[-1].shape[2:]
+        res = []
+        for i, x in enumerate(xs[:-1]):
+            tensor_to_upsample = x[self.idx[i]]
+            upsampled = tiny_Tensor.interpolate(tiny_Tensor(tensor_to_upsample.detach().numpy()), size=target_size, mode='nearest')
+            res.append(upsampled)
+        
+        res += xs[-1:]
+
+        y = tiny_Tensor.stack(*res)
+        out = y.sum(0)
+        return Tensor(out.numpy())
+
+  #def interpolate(self, size:tuple[int, ...], mode:str="linear", align_corners:bool=False) -> Tensor:
+
 def make_anchors(feats, strides, grid_cell_offset=0.5):
     """Generate anchors from features."""
     anchor_points, stride_tensor = [], []
@@ -677,6 +705,17 @@ class DetectionModel(nn.Module):
 
           tiny.d = m.d
 
+          self.model[i] = tiny
+          m = tiny
+        elif type(m) == CBFuse:
+          tiny = tiny_CBFuse()
+          tiny.f = m.f
+          tiny._backward_hooks = m._backward_hooks
+          tiny._backward_pre_hooks = m._backward_pre_hooks
+          tiny._forward_hooks = m._forward_hooks
+          tiny._forward_pre_hooks = m._forward_pre_hooks
+
+          tiny.idx = m.idx
           self.model[i] = tiny
           m = tiny
         if m.f != -1:  # if not from previous layer
@@ -1156,3 +1195,5 @@ def main():
 
 if __name__ == "__main__":
   main()
+
+
