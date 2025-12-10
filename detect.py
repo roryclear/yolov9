@@ -938,14 +938,31 @@ def run():
           np.testing.assert_allclose(pred, expected[size], atol=1e-4, rtol=1e-3)
 
           class_labels = fetch('https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names').read_text().split("\n")
+          pred = rescale_bounding_boxes(pred)
           draw_bounding_boxes_and_save(source, f"out_{size}.jpg", pred, class_labels)
     print("passed")
+
+def rescale_bounding_boxes(predictions, from_size=(1280, 853), to_size=(3020, 1986)):
+    from_w, from_h = from_size
+    to_w, to_h = to_size
+    scale_x = to_w / from_w
+    scale_y = to_h / from_h
+    
+    rescaled_predictions = []
+    for pred in predictions:
+        x1, y1, x2, y2, conf, class_id = pred
+        x1_scaled = x1 * scale_x
+        y1_scaled = y1 * scale_y
+        x2_scaled = x2 * scale_x
+        y2_scaled = y2 * scale_y
+        
+        rescaled_predictions.append([x1_scaled, y1_scaled, x2_scaled, y2_scaled, conf, class_id])
+    return rescaled_predictions
 
 from collections import defaultdict
 def draw_bounding_boxes_and_save(orig_img_path, output_img_path, predictions, class_labels):
   color_dict = {label: tuple((((i+1) * 50) % 256, ((i+1) * 100) % 256, ((i+1) * 150) % 256)) for i, label in enumerate(class_labels)}
   font = cv2.FONT_HERSHEY_SIMPLEX
-
   def is_bright_color(color):
     r, g, b = color
     brightness = (r * 299 + g * 587 + b * 114) / 1000
