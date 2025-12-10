@@ -820,8 +820,12 @@ class DetectionModel(nn.Module):
           tiny._forward_pre_hooks = m._forward_pre_hooks
 
           tiny.nl = m.nl
-          tiny.cv2 = m.cv2
-          tiny.cv3 = m.cv3
+          tiny.cv2 = tiny_Sequential()
+          tiny_seq = tiny_Sequential()
+          for j in range(len(m.cv3)):
+            print(type(m.cv3[j]))
+            tiny_seq.append(m.cv3[j])
+          tiny.cv3 = tiny_seq
           tiny.stride = m.stride
           tiny.no = m.no
           tiny.reg_max = m.reg_max
