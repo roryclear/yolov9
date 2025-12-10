@@ -8,8 +8,6 @@ import math
 import glob
 import cv2
 import torch.nn as nn
-from urllib.parse import urlparse
-from copy import deepcopy
 import pickle
 import torch.nn.functional as F
 from torch import Tensor
@@ -312,6 +310,14 @@ class RepNCSP(nn.Module):
         self.cv2 = Conv(c1, c_, 1, 1)
         self.cv3 = Conv(2 * c_, c2, 1)  # optional act=FReLU(c2)
         self.m = nn.Sequential(*(RepNBottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)))
+
+    def forward(self, x):
+        return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), 1))
+
+class tiny_RepNCSP(nn.Module):
+    # CSP Bottleneck with 3 convolutions
+    def __init__(self):  # ch_in, ch_out, number, shortcut, groups, expansion
+        super().__init__()
 
     def forward(self, x):
         return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), 1))
@@ -875,8 +881,15 @@ class DetectionModel(nn.Module):
           tiny_cv1.tiny_conv.bias = tiny_Tensor(m.cv1.conv.bias.detach().numpy().copy())
           tiny.cv1 = tiny_cv1
 
-          tiny_seq = tiny_Sequential()
-          tiny_seq.append(m.cv2[0])
+          tiny_seq = tiny_Sequential() # todo
+          tiny_rn = tiny_RepNCSP()
+          tiny_rn.cv1 = m.cv2[0].cv1
+          tiny_rn.cv2 = m.cv2[0].cv2
+          tiny_rn.cv3 = m.cv2[0].cv3
+          tiny_rn.m = m.cv2[0].m
+          tiny_seq.append(tiny_rn)
+
+
           tiny_seq_cv2 = tiny_Conv()
           tiny_seq_cv2.tiny_conv = tiny_nn.Conv2d(m.cv2[1].conv.in_channels, m.cv2[1].conv.out_channels, m.cv2[1].conv.kernel_size, m.cv2[1].conv.stride, m.cv2[1].conv.padding, m.cv2[1].conv.dilation, m.cv2[1].conv.groups, True if m.cv2[1].conv.bias is not None else False)
           tiny_seq_cv2.tiny_conv.weight = tiny_Tensor(m.cv2[1].conv.weight.detach().numpy().copy())
@@ -884,8 +897,14 @@ class DetectionModel(nn.Module):
           tiny_seq.append(tiny_seq_cv2)
           tiny.cv2 = tiny_seq
 
-          tiny_seq = tiny_Sequential()
-          tiny_seq.append(m.cv3[0])
+          tiny_seq = tiny_Sequential() # todo
+          tiny_rn = tiny_RepNCSP()
+          tiny_rn.cv1 = m.cv3[0].cv1
+          tiny_rn.cv2 = m.cv3[0].cv2
+          tiny_rn.cv3 = m.cv3[0].cv3
+          tiny_rn.m = m.cv3[0].m
+          tiny_seq.append(tiny_rn)
+
           tiny_seq_cv3 = tiny_Conv()
           tiny_seq_cv3.tiny_conv = tiny_nn.Conv2d(m.cv3[1].conv.in_channels, m.cv3[1].conv.out_channels, m.cv3[1].conv.kernel_size, m.cv3[1].conv.stride, m.cv3[1].conv.padding, m.cv3[1].conv.dilation, m.cv3[1].conv.groups, True if m.cv3[1].conv.bias is not None else False)
           tiny_seq_cv3.tiny_conv.weight = tiny_Tensor(m.cv3[1].conv.weight.detach().numpy().copy())
