@@ -430,6 +430,19 @@ class CBLinear(nn.Module):
         outs = self.conv(x).split(self.c2s, dim=1)
         return outs
 
+class tiny_CBLinear(nn.Module):
+    def __init__(self):  # ch_in, ch_outs, kernel, stride, padding, groups
+        super(tiny_CBLinear, self).__init__()
+        return
+
+    def forward(self, x):
+        if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
+        x = self.conv(x)
+        outs = x.split(self.c2s, dim=1)
+        outs = list(outs)
+        for i in range(len(outs)): outs[i] = Tensor(outs[i].numpy())
+        return tuple(outs)
+
 class CBFuse(nn.Module):
     def __init__(self):
         return
@@ -627,7 +640,22 @@ class DetectionModel(nn.Module):
 
           self.model[i] = tiny
           m = tiny
+        elif type(m) == CBLinear:
+          tiny = tiny_CBLinear()
+          tiny.f = m.f
+          tiny._backward_hooks = m._backward_hooks
+          tiny._backward_pre_hooks = m._backward_pre_hooks
+          tiny._forward_hooks = m._forward_hooks
+          tiny._forward_pre_hooks = m._forward_pre_hooks
 
+          tiny.conv = tiny_nn.Conv2d(m.conv.in_channels, m.conv.out_channels, m.conv.kernel_size, m.conv.stride, m.conv.padding, m.conv.dilation, m.conv.groups, True if m.conv.bias is not None else False)
+          tiny.conv.weight = tiny_Tensor(m.conv.weight.detach().numpy().copy())
+          tiny.conv.bias = tiny_Tensor(m.conv.bias.detach().numpy().copy())
+          tiny.c2s = m.c2s
+
+          self.model[i] = tiny
+          m = tiny
+        
         if m.f != -1:  # if not from previous layer
           x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]
         x = m(x)
