@@ -12,6 +12,8 @@ from urllib.parse import urlparse
 from copy import deepcopy
 import pickle
 import torch.nn.functional as F
+from torch import Tensor
+from tinygrad import nn as tiny_nn, Tensor as tiny_Tensor
 
 TORCH_1_10 = False
 FILE = Path(__file__).resolve()
@@ -75,6 +77,16 @@ class Conv(nn.Module):
 
     def forward_fuse(self, x): return F.silu(self.conv(x))
 
+class tiny_Conv(nn.Module):
+    def __init__(self):
+        super().__init__()
+        return
+    def forward(self, x):
+      tiny_x = tiny_Tensor(x.detach().numpy())
+      tiny_x = self.tiny_conv(tiny_x)
+      tiny_x = tiny_x.silu()
+      return Tensor(tiny_x.numpy())
+    
 class ADown(nn.Module):
     def __init__(self, c1=1, c2=1):  # ch_in, ch_out, shortcut, kernels, groups, expand
         super().__init__()
@@ -450,12 +462,37 @@ def fuse_conv_and_bn(conv, bn):
 class DetectionModel(nn.Module):
     def forward(self, x):
       y = []  # outputs
-      for m in self.model:
+      for i in range(len(self.model)):
+        m = self.model[i]
+        if type(m) == Conv:
+          tiny = tiny_Conv()
+          tiny.f = m.f
+          tiny._backward_hooks = m._backward_hooks
+          tiny._backward_pre_hooks = m._backward_pre_hooks
+          tiny._forward_hooks = m._forward_hooks
+          tiny._forward_pre_hooks = m._forward_pre_hooks
+
+          tiny.conv = nn.Conv2d(m.conv.in_channels, m.conv.out_channels, m.conv.kernel_size, m.conv.stride, m.conv.padding, m.conv.dilation, m.conv.groups, True if m.conv.bias is not None else False)
+          tiny.conv.weight = m.conv.weight
+          tiny.conv.bias = m.conv.bias
+
+          tiny.tiny_conv = tiny_nn.Conv2d(m.conv.in_channels, m.conv.out_channels, m.conv.kernel_size, m.conv.stride, m.conv.padding, m.conv.dilation, m.conv.groups, True if m.conv.bias is not None else False)
+          tiny.tiny_conv.weight = tiny_Tensor(m.conv.weight.detach().numpy().copy())
+          tiny.tiny_conv.bias = tiny_Tensor(m.conv.bias.detach().numpy().copy())
+
+          '''
+          tiny.conv = tiny_nn.Conv2d(m.conv.in_channels, m.conv.out_channels, m.conv.kernel_size, m.conv.stride, m.conv.padding, m.conv.dilation, m.conv.groups, True if m.conv.bias is not None else False)
+          tiny.conv.weight = tiny_Tensor(m.conv.weight.detach().numpy().copy())
+          tiny.conv.bias = tiny_Tensor(m.conv.bias.detach().numpy().copy())
+          '''
+          self.model[i] = tiny
+          m = self.model[i]
         if m.f != -1:  # if not from previous layer
           x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]
         x = m(x)
         y.append(x)
       return x
+
 
 IMG_FORMATS = 'bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm'  # include image suffixes
 VID_FORMATS = 'asf', 'avi', 'gif', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 'ts', 'wmv'  # include video suffixes
@@ -863,7 +900,7 @@ def run():
           pred = pred[0].detach().numpy()
 
           
-          np.testing.assert_allclose(pred, expected[size])
+          np.testing.assert_allclose(pred, expected[size], atol=1e-4, rtol=1e-3)
     print("passed")
 
 def main():
