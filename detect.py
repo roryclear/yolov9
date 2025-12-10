@@ -35,6 +35,9 @@ class Ensemble(nn.ModuleList):
         y = torch.cat(y, 1)  # nms ensemble
         return y, None  # inference, train output
 
+class tiny_ModuleList(nn.ModuleList): pass
+
+class tiny_Sequential(nn.Sequential): pass
 
 def attempt_load(weights, device=None, inplace=True, fuse=True):
     model = Ensemble()
@@ -341,6 +344,17 @@ class SP(nn.Module):
     def forward(self, x):
         return self.m(x)
 
+class tiny_SP(nn.Module):
+    def __init__(self, k=3, s=1):
+        super(tiny_SP, self).__init__()
+        self.k = k
+        self.s = s
+
+    def forward(self, x):
+        x = tiny_Tensor(x.detach().numpy())
+        x = tiny_Tensor.max_pool2d(x, self.k, self.s, dilation=1, padding=self.k//2)
+        return Tensor(x.numpy())
+
 class SPPELAN(nn.Module):
     # spp-elan
     def __init__(self, c1=1, c2=1, c3=1):  # ch_in, ch_out, number, shortcut, groups, expansion
@@ -356,6 +370,19 @@ class SPPELAN(nn.Module):
         y = [self.cv1(x)]
         y.extend(m(y[-1]) for m in [self.cv2, self.cv3, self.cv4])
         return self.cv5(torch.cat(y, 1))
+
+class tiny_SPPELAN(nn.Module):
+    # spp-elan
+    def __init__(self):  # ch_in, ch_out, number, shortcut, groups, expansion
+        super().__init__()
+
+    def forward(self, x):
+        y = [self.cv1(x)]
+        y.extend(m(y[-1]) for m in [self.cv2, self.cv3, self.cv4])
+        y = torch.cat(y, 1)
+        y = tiny_Tensor(y.detach().numpy())
+        y = self.cv5(y)
+        return Tensor(y.numpy())
 
 class Concat(nn.Module):
     # Concatenate a list of tensors along dimension
@@ -755,7 +782,7 @@ class DetectionModel(nn.Module):
           tiny.idx = m.idx
           self.model[i] = tiny
           m = tiny
-        elif type(m) == DDetect: # todo
+        elif type(m) == DDetect: # todo ...too much stuff
           tiny = tiny_DDetect()
           tiny.f = m.f
           tiny._backward_hooks = m._backward_hooks
@@ -776,6 +803,40 @@ class DetectionModel(nn.Module):
           tiny.dfl.c1 = m.dfl.c1
           tiny.dfl.conv = tiny_nn.Conv2d(tiny.dfl.c1, 1, 1, bias=False)
           tiny.dfl.conv.weight = tiny_Tensor(m.dfl.conv.weight.detach().numpy().copy())
+
+          tiny_cv2 = tiny_ModuleList()
+
+          tiny_seq = tiny_Sequential()
+          tiny_seq.append(m.cv2[0][0])
+          tiny_seq.append(m.cv2[0][1])
+          tiny_seq.append(m.cv2[0][2])
+          tiny_cv2.append(tiny_seq)
+          
+          tiny_cv2.append(m.cv2[1])
+          tiny_cv2.append(m.cv2[2])
+          tiny.cv2 = tiny_cv2
+
+          self.model[i] = tiny
+          m = tiny
+        elif type(m) == SPPELAN:
+          tiny = tiny_SPPELAN()
+          tiny.f = m.f
+          tiny._backward_hooks = m._backward_hooks
+          tiny._backward_pre_hooks = m._backward_pre_hooks
+          tiny._forward_hooks = m._forward_hooks
+          tiny._forward_pre_hooks = m._forward_pre_hooks
+
+          tiny.cv1 = m.cv1
+          tiny.cv2 = m.cv2
+          tiny.cv3 = m.cv3
+          #tiny.cv4 = m.cv4
+
+          tiny.cv4 = tiny_SP(m.cv4.m.kernel_size, m.cv4.m.stride)
+          tiny.cv5 = tiny_Conv()
+          tiny.cv5.tiny_conv = tiny_nn.Conv2d(m.cv5.conv.in_channels, m.cv5.conv.out_channels, m.cv5.conv.kernel_size, m.cv5.conv.stride, m.cv5.conv.padding, m.cv5.conv.dilation, m.cv5.conv.groups, True if m.cv5.conv.bias is not None else False)
+          tiny.cv5.tiny_conv.weight = tiny_Tensor(m.cv5.conv.weight.detach().numpy())
+          tiny.cv5.tiny_conv.bias = tiny_Tensor(m.cv5.conv.bias.detach().numpy())
+
           self.model[i] = tiny
           m = tiny
         if m.f != -1:  # if not from previous layer
@@ -1255,5 +1316,6 @@ def main():
 
 if __name__ == "__main__":
   main()
+
 
 
