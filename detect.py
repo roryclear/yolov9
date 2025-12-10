@@ -416,6 +416,44 @@ class DDetect(nn.Module):
         y = torch.cat((dbox, cls.sigmoid()), 1)
         return y if self.export else (y, x)
 
+class tiny_DDetect(nn.Module):
+    # YOLO Detect head for detection models
+    dynamic = False  # force grid reconstruction
+    export = False  # export mode
+    shape = None
+    anchors = torch.empty(0)  # init
+    strides = torch.empty(0)  # init
+
+    def __init__(self, nc=80, ch=(), inplace=True):  # detection layer
+        super().__init__()
+        return
+        self.nc = nc  # number of classes
+        self.nl = len(ch)  # number of detection layers
+        self.reg_max = 16
+        self.no = nc + self.reg_max * 4  # number of outputs per anchor
+        self.inplace = inplace  # use inplace ops (e.g. slice assignment)
+        self.stride = torch.zeros(self.nl)  # strides computed during build
+
+        c2, c3 = make_divisible(max((ch[0] // 4, self.reg_max * 4, 16)), 4), max((ch[0], min((self.nc * 2, 128))))  # channels
+        self.cv2 = nn.ModuleList(
+            nn.Sequential(Conv(x, c2, 3), Conv(c2, c2, 3, g=4), nn.Conv2d(c2, 4 * self.reg_max, 1, groups=4)) for x in ch)
+        self.cv3 = nn.ModuleList(
+            nn.Sequential(Conv(x, c3, 3), Conv(c3, c3, 3), nn.Conv2d(c3, self.nc, 1)) for x in ch)
+        self.dfl = DFL(self.reg_max) if self.reg_max > 1 else nn.Identity()
+
+    def forward(self, x):
+        shape = x[0].shape  # BCHW
+        for i in range(self.nl):
+            x[i] = torch.cat((self.cv2[i](x[i]), self.cv3[i](x[i])), 1)
+        if self.dynamic or self.shape != shape:
+            self.anchors, self.strides = (x.transpose(0, 1) for x in make_anchors(x, self.stride, 0.5))
+            self.shape = shape
+
+        box, cls = torch.cat([xi.view(shape[0], self.no, -1) for xi in x], 2).split((self.reg_max * 4, self.nc), 1)
+        dbox = dist2bbox(self.dfl(box), self.anchors.unsqueeze(0), xywh=True, dim=1) * self.strides
+        y = torch.cat((dbox, cls.sigmoid()), 1)
+        return y if self.export else (y, x)
+
 class DFL(nn.Module):
     # DFL module
     def __init__(self, c1=17):
@@ -539,15 +577,14 @@ class tiny_DFL(nn.Module):
     # DFL module
     def __init__(self, c1=17):
         super().__init__()
-        self.conv = nn.Conv2d(c1, 1, 1, bias=False).requires_grad_(False)
-        self.conv.weight.data[:] = nn.Parameter(torch.arange(c1, dtype=torch.float).view(1, c1, 1, 1)) # / 120.0
-        self.c1 = c1
         # self.bn = nn.BatchNorm2d(4)
 
     def forward(self, x):
-        b, c, a = x.shape  # batch, channels, anchors
-        return self.conv(x.view(b, 4, self.c1, a).transpose(2, 1).softmax(1)).view(b, 4, a)
-        # return self.conv(x.view(b, self.c1, 4, a).softmax(1)).view(b, 4, a)
+        if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
+        b, _, a = x.shape  # batch, channels, anchors
+        x = x.view(b, 4, self.c1, a)
+        x = self.conv(x.transpose(2, 1).softmax(1)).view(b, 4, a)
+        return Tensor(x.numpy())
 
 
 class Silence(nn.Module):
@@ -716,6 +753,29 @@ class DetectionModel(nn.Module):
           tiny._forward_pre_hooks = m._forward_pre_hooks
 
           tiny.idx = m.idx
+          self.model[i] = tiny
+          m = tiny
+        elif type(m) == DDetect: # todo
+          tiny = tiny_DDetect()
+          tiny.f = m.f
+          tiny._backward_hooks = m._backward_hooks
+          tiny._backward_pre_hooks = m._backward_pre_hooks
+          tiny._forward_hooks = m._forward_hooks
+          tiny._forward_pre_hooks = m._forward_pre_hooks
+
+          tiny.nl = m.nl
+          tiny.cv2 = m.cv2
+          tiny.cv3 = m.cv3
+          tiny.stride = m.stride
+          tiny.no = m.no
+          tiny.reg_max = m.reg_max
+          tiny.nc = m.nc
+
+
+          tiny.dfl = tiny_DFL()
+          tiny.dfl.c1 = m.dfl.c1
+          tiny.dfl.conv = tiny_nn.Conv2d(tiny.dfl.c1, 1, 1, bias=False)
+          tiny.dfl.conv.weight = tiny_Tensor(m.dfl.conv.weight.detach().numpy().copy())
           self.model[i] = tiny
           m = tiny
         if m.f != -1:  # if not from previous layer
