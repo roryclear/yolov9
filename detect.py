@@ -82,7 +82,8 @@ class tiny_Conv(nn.Module):
         super().__init__()
         return
     def forward(self, x):
-      tiny_x = tiny_Tensor(x.detach().numpy())
+      tiny_x = x
+      if type(tiny_x) != tiny_Tensor: tiny_x = tiny_Tensor(tiny_x.detach().numpy())
       tiny_x = self.tiny_conv(tiny_x)
       tiny_x = tiny_x.silu()
       return Tensor(tiny_x.numpy())
@@ -109,6 +110,15 @@ class AConv(nn.Module):
 
     def forward(self, x):
         x = torch.nn.functional.avg_pool2d(x, 2, 1, 0, False, True)
+        return self.cv1(x)
+
+class tiny_AConv(nn.Module):
+    def __init__(self):  # ch_in, ch_out, shortcut, kernels, groups, expand
+        super().__init__()
+
+    def forward(self, x):
+        x = tiny_Tensor(x.detach().numpy())
+        x = tiny_Tensor.avg_pool2d(x, kernel_size=2, stride=1, padding=0, ceil_mode=False, count_include_pad=True)
         return self.cv1(x)
 
 class ELAN1(nn.Module):
@@ -483,11 +493,19 @@ class DetectionModel(nn.Module):
           self.model[i] = tiny
           m = self.model[i]
         elif type(m) == AConv:
-          tiny = tiny_Conv()
-          tiny.tiny_conv = tiny_nn.Conv2d(m.cv1.conv.in_channels, m.cv1.conv.out_channels, m.cv1.conv.kernel_size, m.cv1.conv.stride, m.cv1.conv.padding, m.cv1.conv.dilation, m.cv1.conv.groups, True if m.cv1.conv.bias is not None else False)
-          tiny.tiny_conv.weight = tiny_Tensor(m.cv1.conv.weight.detach().numpy().copy())
-          tiny.tiny_conv.bias = tiny_Tensor(m.cv1.conv.bias.detach().numpy().copy())
-          self.model[i].cv1 = tiny
+          tiny = tiny_AConv()
+          tiny.f = m.f
+          tiny._backward_hooks = m._backward_hooks
+          tiny._backward_pre_hooks = m._backward_pre_hooks
+          tiny._forward_hooks = m._forward_hooks
+          tiny._forward_pre_hooks = m._forward_pre_hooks
+
+          tiny_cv1 = tiny_Conv()
+          tiny_cv1.tiny_conv = tiny_nn.Conv2d(m.cv1.conv.in_channels, m.cv1.conv.out_channels, m.cv1.conv.kernel_size, m.cv1.conv.stride, m.cv1.conv.padding, m.cv1.conv.dilation, m.cv1.conv.groups, True if m.cv1.conv.bias is not None else False)
+          tiny_cv1.tiny_conv.weight = tiny_Tensor(m.cv1.conv.weight.detach().numpy().copy())
+          tiny_cv1.tiny_conv.bias = tiny_Tensor(m.cv1.conv.bias.detach().numpy().copy())
+          tiny.cv1 = tiny_cv1
+          self.model[i] = tiny
           m = self.model[i]
 
         if m.f != -1:  # if not from previous layer
