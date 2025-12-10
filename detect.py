@@ -826,7 +826,14 @@ class DetectionModel(nn.Module):
             tiny_seq_2 = tiny_Sequential()
             for k in range(len(m.cv3[j])):
               print(type(m.cv3[j][k]))
-              tiny_seq_2.append(m.cv3[j][k])
+              if type(m.cv3[j][k]) == Conv:
+                tiny_conv = tiny_Conv()
+                tiny_conv.tiny_conv = tiny_nn.Conv2d(m.cv3[j][k].conv.in_channels, m.cv3[j][k].conv.out_channels, m.cv3[j][k].conv.kernel_size, m.cv3[j][k].conv.stride, m.cv3[j][k].conv.padding, m.cv3[j][k].conv.dilation, m.cv3[j][k].conv.groups, True if m.cv3[j][k].conv.bias is not None else False)
+                tiny_conv.tiny_conv.weight = tiny_Tensor(m.cv3[j][k].conv.weight.detach().numpy().copy())
+                tiny_conv.tiny_conv.bias = tiny_Tensor(m.cv3[j][k].conv.bias.detach().numpy().copy())
+                tiny_seq_2.append(tiny_conv)
+              else:
+                tiny_seq_2.append(m.cv3[j][k])
             tiny_seq.append(tiny_seq_2)
           tiny.cv3 = tiny_seq
           tiny.stride = m.stride
