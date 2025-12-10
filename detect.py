@@ -377,12 +377,15 @@ class tiny_SPPELAN(nn.Module):
         super().__init__()
 
     def forward(self, x):
+        if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
         y = [self.cv1(x)]
-        y.extend(m(y[-1]) for m in [self.cv2, self.cv3, self.cv4])
-        y = torch.cat(y, 1)
-        y = tiny_Tensor(y.detach().numpy())
+        y.append(self.cv2(y[-1]))
+        y.append(self.cv3(y[-1]))
+        y.append(self.cv4(y[-1]))
+        for i in range(len(y)): y[i] = tiny_Tensor(y[i].detach().numpy())
+        y = tiny_Tensor.cat(*y, dim=1)
         y = self.cv5(y)
-        return Tensor(y.numpy())
+        return y
 
 class Concat(nn.Module):
     # Concatenate a list of tensors along dimension
@@ -826,11 +829,14 @@ class DetectionModel(nn.Module):
           tiny._forward_hooks = m._forward_hooks
           tiny._forward_pre_hooks = m._forward_pre_hooks
 
-          tiny.cv1 = m.cv1
-          tiny.cv2 = m.cv2
-          tiny.cv3 = m.cv3
-          #tiny.cv4 = m.cv4
 
+          tiny_cv1 = tiny_Conv()
+          tiny_cv1.tiny_conv = tiny_nn.Conv2d(m.cv1.conv.in_channels, m.cv1.conv.out_channels, m.cv1.conv.kernel_size, m.cv1.conv.stride, m.cv1.conv.padding, m.cv1.conv.dilation, m.cv1.conv.groups, True if m.cv1.conv.bias is not None else False)
+          tiny_cv1.tiny_conv.weight = tiny_Tensor(m.cv1.conv.weight.detach().numpy().copy())
+          tiny_cv1.tiny_conv.bias = tiny_Tensor(m.cv1.conv.bias.detach().numpy().copy())
+          tiny.cv1 = tiny_cv1
+          tiny.cv2 = tiny_SP(m.cv2.m.kernel_size, m.cv2.m.stride)
+          tiny.cv3 = tiny_SP(m.cv3.m.kernel_size, m.cv3.m.stride)
           tiny.cv4 = tiny_SP(m.cv4.m.kernel_size, m.cv4.m.stride)
           tiny.cv5 = tiny_Conv()
           tiny.cv5.tiny_conv = tiny_nn.Conv2d(m.cv5.conv.in_channels, m.cv5.conv.out_channels, m.cv5.conv.kernel_size, m.cv5.conv.stride, m.cv5.conv.padding, m.cv5.conv.dilation, m.cv5.conv.groups, True if m.cv5.conv.bias is not None else False)
