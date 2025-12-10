@@ -883,7 +883,10 @@ class DetectionModel(nn.Module):
 
           tiny_seq = tiny_Sequential() # todo
           tiny_rn = tiny_RepNCSP()
-          tiny_rn.cv1 = m.cv2[0].cv1
+          tiny_rn.cv1 = tiny_Conv()
+          tiny_rn.cv1.tiny_conv = tiny_nn.Conv2d(m.cv2[0].cv1.conv.in_channels, m.cv2[0].cv1.conv.out_channels, m.cv2[0].cv1.conv.kernel_size, m.cv2[0].cv1.conv.stride, m.cv2[0].cv1.conv.padding, m.cv2[0].cv1.conv.dilation, m.cv2[0].cv1.conv.groups, True if m.cv2[0].cv1.conv.bias is not None else False)
+          tiny_rn.cv1.tiny_conv.weight = tiny_Tensor(m.cv2[0].cv1.conv.weight.detach().numpy().copy())
+          tiny_rn.cv1.tiny_conv.bias = tiny_Tensor(m.cv2[0].cv1.conv.bias.detach().numpy().copy())
           tiny_rn.cv2 = m.cv2[0].cv2
           tiny_rn.cv3 = m.cv2[0].cv3
           tiny_rn.m = m.cv2[0].m
@@ -898,8 +901,12 @@ class DetectionModel(nn.Module):
           tiny.cv2 = tiny_seq
 
           tiny_seq = tiny_Sequential() # todo
+
           tiny_rn = tiny_RepNCSP()
-          tiny_rn.cv1 = m.cv3[0].cv1
+          tiny_rn.cv1 = tiny_Conv()
+          tiny_rn.cv1.tiny_conv = tiny_nn.Conv2d(m.cv3[0].cv1.conv.in_channels, m.cv3[0].cv1.conv.out_channels, m.cv3[0].cv1.conv.kernel_size, m.cv3[0].cv1.conv.stride, m.cv3[0].cv1.conv.padding, m.cv3[0].cv1.conv.dilation, m.cv3[0].cv1.conv.groups, True if m.cv3[0].cv1.conv.bias is not None else False)
+          tiny_rn.cv1.tiny_conv.weight = tiny_Tensor(m.cv3[0].cv1.conv.weight.detach().numpy().copy())
+          tiny_rn.cv1.tiny_conv.bias = tiny_Tensor(m.cv3[0].cv1.conv.bias.detach().numpy().copy())
           tiny_rn.cv2 = m.cv3[0].cv2
           tiny_rn.cv3 = m.cv3[0].cv3
           tiny_rn.m = m.cv3[0].m
@@ -1399,6 +1406,7 @@ def main():
 
 if __name__ == "__main__":
   main()
+
 
 
 
