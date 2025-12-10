@@ -823,8 +823,11 @@ class DetectionModel(nn.Module):
           tiny.cv2 = tiny_Sequential()
           tiny_seq = tiny_Sequential()
           for j in range(len(m.cv3)):
-            print(type(m.cv3[j]))
-            tiny_seq.append(m.cv3[j])
+            tiny_seq_2 = tiny_Sequential()
+            for k in range(len(m.cv3[j])):
+              print(type(m.cv3[j][k]))
+              tiny_seq_2.append(m.cv3[j][k])
+            tiny_seq.append(tiny_seq_2)
           tiny.cv3 = tiny_seq
           tiny.stride = m.stride
           tiny.no = m.no
