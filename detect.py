@@ -33,8 +33,6 @@ class Ensemble(nn.ModuleList):
         y = torch.cat(y, 1)  # nms ensemble
         return y, None  # inference, train output
 
-class tiny_ModuleList(nn.ModuleList): pass
-
 class tiny_Sequential(nn.Sequential): pass
 
 def attempt_load(weights, device=None, inplace=True, fuse=True):
@@ -835,7 +833,7 @@ class DetectionModel(nn.Module):
           tiny.dfl.conv = tiny_nn.Conv2d(tiny.dfl.c1, 1, 1, bias=False)
           tiny.dfl.conv.weight = tiny_Tensor(m.dfl.conv.weight.detach().numpy().copy())
 
-          tiny_cv2 = tiny_ModuleList()
+          tiny_cv2 = tiny_Sequential()
 
           tiny_seq = tiny_Sequential()
           tiny_seq.append(m.cv2[0][0])
@@ -1391,6 +1389,7 @@ def run():
           if len(im.shape) == 3: im = im[None]  # expand for batch dim
 
           model.convert()
+
           #pickle.dump(model, open(f'yolov9-{size}-tiny.pt', 'wb'))
 
           pred = model(im)
