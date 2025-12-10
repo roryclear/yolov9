@@ -896,7 +896,7 @@ class DetectionModel(nn.Module):
           tiny_rn.cv3.tiny_conv.bias = tiny_Tensor(m.cv2[0].cv3.conv.bias.detach().numpy().copy())
 
 
-          tiny_rn.m = m.cv2[0].m
+          tiny_rn.m = m.cv2[0].m # todo not tiny
           tiny_seq.append(tiny_rn)
 
 
@@ -922,7 +922,7 @@ class DetectionModel(nn.Module):
           tiny_rn.cv3.tiny_conv = tiny_nn.Conv2d(m.cv3[0].cv3.conv.in_channels, m.cv3[0].cv3.conv.out_channels, m.cv3[0].cv3.conv.kernel_size, m.cv3[0].cv3.conv.stride, m.cv3[0].cv3.conv.padding, m.cv3[0].cv3.conv.dilation, m.cv3[0].cv3.conv.groups, True if m.cv3[0].cv3.conv.bias is not None else False)
           tiny_rn.cv3.tiny_conv.weight = tiny_Tensor(m.cv3[0].cv3.conv.weight.detach().numpy().copy())
           tiny_rn.cv3.tiny_conv.bias = tiny_Tensor(m.cv3[0].cv3.conv.bias.detach().numpy().copy())
-          tiny_rn.m = m.cv3[0].m
+          tiny_rn.m = m.cv3[0].m # TODO, not tiny!
           tiny_seq.append(tiny_rn)
 
           tiny_seq_cv3 = tiny_Conv()
@@ -938,7 +938,6 @@ class DetectionModel(nn.Module):
           tiny_seq_cv4.tiny_conv.bias = tiny_Tensor(m.cv4.conv.bias.detach().numpy().copy())
           tiny.cv4 = tiny_seq_cv4
 
-          
           self.model[i] = tiny
           m = tiny
 
@@ -947,8 +946,6 @@ class DetectionModel(nn.Module):
       y = []  # outputs
       for i in range(len(self.model)):
         m = self.model[i]
-        print(type(m))
-        #print(type(m))
         if m.f != -1:  # if not from previous layer
           x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]
         x = m(x)
@@ -1341,6 +1338,7 @@ def run():
     
     for size in ["t", "s", "m", "c", "e"]:
         weights = f'./yolov9-{size}-tiny.pt'
+        weights = f'./yolov9-{size}-converted.pt'
 
         source = "data/images/football.webp"
         imgsz = (1280,1280)
@@ -1357,7 +1355,7 @@ def run():
           im /= 255  # 0 - 255 to 0.0 - 1.0
           if len(im.shape) == 3: im = im[None]  # expand for batch dim
 
-          #model.convert()
+          model.convert()
           #pickle.dump(model, open(f'yolov9-{size}-tiny.pt', 'wb'))
 
           pred = model(im)
