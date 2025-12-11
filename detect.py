@@ -90,11 +90,6 @@ class tiny_ELAN1():
       y = self.cv4(y)
       #y = Tensor(y.numpy())
       return y
-
-    def forward_split(self, x):
-        y = list(self.cv1(x).split((self.c, self.c), 1))
-        y.extend(m(y[-1]) for m in [self.cv2, self.cv3])
-        return self.cv4(torch.cat(y, 1))
     
 class tiny_RepNBottleneck():
     # Standard bottleneck
@@ -135,11 +130,6 @@ class tiny_RepNCSPELAN4():
     def __call__(self, x):
         y = list(self.cv1(x).chunk(2, 1))
         y.extend((m(y[-1])) for m in [self.cv2, self.cv3])
-        return self.cv4(torch.cat(y, 1))
-
-    def forward_split(self, x):
-        y = list(self.cv1(x).split((self.c, self.c), 1))
-        y.extend(m(y[-1]) for m in [self.cv2, self.cv3])
         return self.cv4(torch.cat(y, 1))
 
 class tiny_SP():
