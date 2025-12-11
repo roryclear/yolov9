@@ -9,10 +9,11 @@ import glob
 import cv2
 import torch.nn as nn
 import pickle
-import torch.nn.functional as F
 from torch import Tensor
 from tinygrad import nn as tiny_nn, Tensor as tiny_Tensor
 from tinygrad.helpers import fetch
+
+from other import Conv, ADown, AConv, ELAN1, RepNBottleneck, RepNCSP, RepConvN, RepNCSPELAN4, SP, SPPELAN, Concat, DDetect, DFL, CBLinear, CBFuse, DetectionModel
 
 TORCH_1_10 = False
 FILE = Path(__file__).resolve()
@@ -38,11 +39,6 @@ class tiny_Sequential():
     def __getitem__(self, idx):
       return self.list[idx]
 
-
-class Conv(nn.Module):
-    def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, act=True): super().__init__()
-    def forward_fuse(self, x): return
-
 class tiny_Conv():
     def __init__(self):
         super().__init__()
@@ -53,8 +49,6 @@ class tiny_Conv():
       tiny_x = self.tiny_conv(tiny_x)
       tiny_x = tiny_x.silu()
       return Tensor(tiny_x.numpy())
-    
-class ADown(nn.Module): pass
 
 class tiny_ADown():
     def __init__(self, c1=1, c2=1): super().__init__()
@@ -70,8 +64,6 @@ class tiny_ADown():
       x = tiny_Tensor.cat(x1, x2, dim=1)
       return Tensor(x.numpy())
 
-class AConv(nn.Module): pass
-
 class tiny_AConv():
     def __init__(self):  # ch_in, ch_out, shortcut, kernels, groups, expand
         super().__init__()
@@ -80,8 +72,6 @@ class tiny_AConv():
         x = tiny_Tensor(x.detach().numpy())
         x = tiny_Tensor.avg_pool2d(x, kernel_size=2, stride=1, padding=0, ceil_mode=False, count_include_pad=True)
         return self.cv1(x)
-
-class ELAN1(nn.Module): pass
 
 class tiny_ELAN1():
     def __init__(self, c1=1, c2=1, c3=1, c4=1):  # ch_in, ch_out, number, shortcut, groups, expansion
@@ -105,9 +95,6 @@ class tiny_ELAN1():
         y = list(self.cv1(x).split((self.c, self.c), 1))
         y.extend(m(y[-1]) for m in [self.cv2, self.cv3])
         return self.cv4(torch.cat(y, 1))
-
-
-class RepNBottleneck(nn.Module): pass
     
 class tiny_RepNBottleneck():
     # Standard bottleneck
@@ -117,19 +104,6 @@ class tiny_RepNBottleneck():
     def __call__(self, x):
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
 
-class RepConvN(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def forward_fuse(self, x):
-        exit()
-
-    def forward(self, x):
-        exit()
-
-
-class RepNCSP(nn.Module): pass
-
 class tiny_RepNCSP():
     # CSP Bottleneck with 3 convolutions
     def __init__(self):  # ch_in, ch_out, number, shortcut, groups, expansion
@@ -137,8 +111,6 @@ class tiny_RepNCSP():
 
     def __call__(self, x):
         return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), 1))
-
-class RepNCSPELAN4(nn.Module): pass
 
 class tiny_RepNCSPELAN4():
     # csp-elan
@@ -155,8 +127,6 @@ class tiny_RepNCSPELAN4():
         y.extend(m(y[-1]) for m in [self.cv2, self.cv3])
         return self.cv4(torch.cat(y, 1))
 
-class SP(nn.Module): pass
-
 class tiny_SP():
     def __init__(self, k=3, s=1):
         super(tiny_SP, self).__init__()
@@ -167,8 +137,6 @@ class tiny_SP():
         x = tiny_Tensor(x.detach().numpy())
         x = tiny_Tensor.max_pool2d(x, self.k, self.s, dilation=1, padding=self.k//2)
         return Tensor(x.numpy())
-
-class SPPELAN(nn.Module): pass
 
 class tiny_SPPELAN():
     # spp-elan
@@ -186,8 +154,6 @@ class tiny_SPPELAN():
         y = self.cv5(y)
         return y
 
-class Concat(nn.Module): pass
-
 class tiny_Concat():
     # Concatenate a list of tensors along dimension
     def __init__(self, dimension=1):
@@ -198,9 +164,6 @@ class tiny_Concat():
       if type(x[1]) != tiny_Tensor: x[1] = tiny_Tensor(x[1].detach().numpy())
       y = tiny_Tensor.cat(x[0],x[1],dim=self.d)
       return Tensor(y.numpy())
-
-
-class DDetect(nn.Module): pass
 
 class tiny_DDetect():
     # YOLO Detect head for detection models
@@ -227,10 +190,6 @@ class tiny_DDetect():
         y = torch.cat((dbox, cls.sigmoid()), 1)
         return y if self.export else (y, x)
 
-class DFL(nn.Module): pass
-
-class CBLinear(nn.Module): pass
-
 class tiny_CBLinear():
     def __init__(self):  # ch_in, ch_outs, kernel, stride, padding, groups
         super(tiny_CBLinear, self).__init__()
@@ -243,8 +202,6 @@ class tiny_CBLinear():
         outs = list(outs)
         for i in range(len(outs)): outs[i] = Tensor(outs[i].numpy())
         return tuple(outs)
-
-class CBFuse(nn.Module): pass
 
 class tiny_CBFuse():
     def __init__(self):
@@ -299,9 +256,6 @@ def dist2bbox(distance, anchor_points, xywh=True, dim=-1):
         return torch.cat((c_xy, wh), dim)  # xywh bbox
     return torch.cat((x1y1, x2y2), dim)  # xyxy bbox
 
-
-class DFL(nn.Module): pass
-
 class tiny_DFL():
     # DFL module
     def __init__(self, c1=17):
@@ -332,8 +286,6 @@ class Silence():
         super(Silence, self).__init__()
     def __call__(self, x):    
         return x
-
-class DetectionModel(nn.Module): pass
 
 class tiny_DetectionModel():
   def convert(self):
