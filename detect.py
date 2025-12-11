@@ -653,6 +653,18 @@ class tiny_DFL(nn.Module):
         return Tensor(x.numpy())
 
 
+class tiny_Upsample(nn.Module): # nearest for now
+  def __init__(self):
+      super().__init__()
+  
+  def forward(self, x):
+    N, C, H, W = x.shape
+    s = self.scale_factor
+    return x.repeat_interleave(s, dim=2).repeat_interleave(s, dim=3)
+
+
+
+
 class Silence(nn.Module):
     def __init__(self):
         super(Silence, self).__init__()
@@ -1047,12 +1059,25 @@ class DetectionModel(nn.Module):
 
           self.model[i] = tiny
           m = tiny
+        elif type(m) == nn.Upsample:
+          tiny = tiny_Upsample()
+          tiny.f = m.f
+          tiny._backward_hooks = m._backward_hooks
+          tiny._backward_pre_hooks = m._backward_pre_hooks
+          tiny._forward_hooks = m._forward_hooks
+          tiny._forward_pre_hooks = m._forward_pre_hooks
 
+          tiny.scale_factor = int(m.scale_factor)
+
+          self.model[i] = tiny
+          m = tiny
+          
 
     def forward(self, x):
       y = []  # outputs
       for i in range(len(self.model)):
         m = self.model[i]
+        #if type(m) == nn.Upsample: print(x.shape)
         if m.f != -1:  # if not from previous layer
           x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]
         x = m(x)
