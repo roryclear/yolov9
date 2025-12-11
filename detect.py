@@ -857,9 +857,7 @@ class DetectionModel(nn.Module):
 
           tiny_cv2 = tiny_Sequential()
 
-          tiny_seq = tiny_Sequential()
-          # todo? also not tiny
-          
+          tiny_seq = tiny_Sequential()          
           tiny_conv = tiny_Conv()
           tiny_conv.tiny_conv = tiny_nn.Conv2d(m.cv2[0][0].conv.in_channels, m.cv2[0][0].conv.out_channels, m.cv2[0][0].conv.kernel_size, m.cv2[0][0].conv.stride, m.cv2[0][0].conv.padding, m.cv2[0][0].conv.dilation, m.cv2[0][0].conv.groups, True if m.cv2[0][0].conv.bias is not None else False)
           tiny_conv.tiny_conv.weight = tiny_Tensor(m.cv2[0][0].conv.weight.detach().numpy().copy())
@@ -877,10 +875,48 @@ class DetectionModel(nn.Module):
           tiny_conv.weight = tiny_Tensor(m.cv2[0][2].weight.detach().numpy().copy())
           tiny_conv.bias = tiny_Tensor(m.cv2[0][2].bias.detach().numpy().copy())
           tiny_seq.append(tiny_conv)
-
           tiny_cv2.append(tiny_seq)
-          tiny_cv2.append(m.cv2[1])
-          tiny_cv2.append(m.cv2[2])
+
+          
+          tiny_seq = tiny_Sequential()          
+          tiny_conv = tiny_Conv()
+          tiny_conv.tiny_conv = tiny_nn.Conv2d(m.cv2[1][0].conv.in_channels, m.cv2[1][0].conv.out_channels, m.cv2[1][0].conv.kernel_size, m.cv2[1][0].conv.stride, m.cv2[1][0].conv.padding, m.cv2[1][0].conv.dilation, m.cv2[1][0].conv.groups, True if m.cv2[1][0].conv.bias is not None else False)
+          tiny_conv.tiny_conv.weight = tiny_Tensor(m.cv2[1][0].conv.weight.detach().numpy().copy())
+          tiny_conv.tiny_conv.bias = tiny_Tensor(m.cv2[1][0].conv.bias.detach().numpy().copy())
+          tiny_seq.append(tiny_conv)
+
+          tiny_conv = tiny_Conv()
+          tiny_conv.tiny_conv = tiny_nn.Conv2d(m.cv2[1][1].conv.in_channels, m.cv2[1][1].conv.out_channels, m.cv2[1][1].conv.kernel_size, m.cv2[1][1].conv.stride, m.cv2[1][1].conv.padding, m.cv2[1][1].conv.dilation, m.cv2[1][1].conv.groups, True if m.cv2[1][1].conv.bias is not None else False)
+          tiny_conv.tiny_conv.weight = tiny_Tensor(m.cv2[1][1].conv.weight.detach().numpy().copy())
+          tiny_conv.tiny_conv.bias = tiny_Tensor(m.cv2[1][1].conv.bias.detach().numpy().copy())
+          tiny_seq.append(tiny_conv)
+
+          tiny_conv = tiny_nn.Conv2d(m.cv2[1][2].in_channels, m.cv2[1][2].out_channels, m.cv2[1][2].kernel_size, m.cv2[1][2].stride, m.cv2[1][2].padding, m.cv2[1][2].dilation, m.cv2[1][2].groups, True if m.cv2[1][2].bias is not None else False)
+          tiny_conv.weight = tiny_Tensor(m.cv2[1][2].weight.detach().numpy().copy())
+          tiny_conv.bias = tiny_Tensor(m.cv2[1][2].bias.detach().numpy().copy())
+          tiny_seq.append(tiny_conv)
+          tiny_cv2.append(tiny_seq)
+
+
+          tiny_seq = tiny_Sequential()          
+          tiny_conv = tiny_Conv()
+          tiny_conv.tiny_conv = tiny_nn.Conv2d(m.cv2[2][0].conv.in_channels, m.cv2[2][0].conv.out_channels, m.cv2[2][0].conv.kernel_size, m.cv2[2][0].conv.stride, m.cv2[2][0].conv.padding, m.cv2[2][0].conv.dilation, m.cv2[2][0].conv.groups, True if m.cv2[2][0].conv.bias is not None else False)
+          tiny_conv.tiny_conv.weight = tiny_Tensor(m.cv2[2][0].conv.weight.detach().numpy().copy())
+          tiny_conv.tiny_conv.bias = tiny_Tensor(m.cv2[2][0].conv.bias.detach().numpy().copy())
+          tiny_seq.append(tiny_conv)
+
+          tiny_conv = tiny_Conv()
+          tiny_conv.tiny_conv = tiny_nn.Conv2d(m.cv2[2][1].conv.in_channels, m.cv2[2][1].conv.out_channels, m.cv2[2][1].conv.kernel_size, m.cv2[2][1].conv.stride, m.cv2[2][1].conv.padding, m.cv2[2][1].conv.dilation, m.cv2[2][1].conv.groups, True if m.cv2[2][1].conv.bias is not None else False)
+          tiny_conv.tiny_conv.weight = tiny_Tensor(m.cv2[2][1].conv.weight.detach().numpy().copy())
+          tiny_conv.tiny_conv.bias = tiny_Tensor(m.cv2[2][1].conv.bias.detach().numpy().copy())
+          tiny_seq.append(tiny_conv)
+
+          tiny_conv = tiny_nn.Conv2d(m.cv2[2][2].in_channels, m.cv2[2][2].out_channels, m.cv2[2][2].kernel_size, m.cv2[2][2].stride, m.cv2[2][2].padding, m.cv2[2][2].dilation, m.cv2[2][2].groups, True if m.cv2[1][2].bias is not None else False)
+          tiny_conv.weight = tiny_Tensor(m.cv2[2][2].weight.detach().numpy().copy())
+          tiny_conv.bias = tiny_Tensor(m.cv2[2][2].bias.detach().numpy().copy())
+          tiny_seq.append(tiny_conv)
+          tiny_cv2.append(tiny_seq)
+
           tiny.cv2 = tiny_cv2
 
           self.model[i] = tiny
