@@ -106,7 +106,9 @@ def to_tiny(x):
   
 def to_torch(x):
   if type(x) != Tensor:
-    x = Tensor(x.numpy())
+    if type(x) == tiny_Tensor: x = Tensor(x.numpy())
+    if type(x) == list:
+      for i in range(len(x)): x[i] = to_torch(x[i])
   return x
 
 class tiny_RepNCSP():
@@ -198,8 +200,13 @@ class tiny_DDetect():
     def __call__(self, x):
         shape = x[0].shape  # BCHW
         for i in range(self.nl):
-            x[i] = torch.cat((self.cv2[i](x[i]), self.cv3[i](x[i])), 1)
+            x[i] = to_tiny(x[i])
+            x0 = self.cv2[i](x[i])
+            x1 = self.cv3[i](x[i])
+            x0, x1 = to_tiny(x0), to_tiny(x1)
+            x[i] = tiny_Tensor.cat(x0, x1, dim=1)
         if self.dynamic or self.shape != shape:
+            x = to_torch(x)
             self.anchors, self.strides = (x.transpose(0, 1) for x in make_anchors(x, self.stride, 0.5))
             self.shape = shape
 
