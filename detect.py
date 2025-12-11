@@ -658,12 +658,11 @@ class tiny_Upsample(nn.Module): # nearest for now
       super().__init__()
   
   def forward(self, x):
+    if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
     N, C, H, W = x.shape
     s = self.scale_factor
-    return x.repeat_interleave(s, dim=2).repeat_interleave(s, dim=3)
-
-
-
+    x = x.repeat_interleave(s, dim=2).repeat_interleave(s, dim=3)
+    return Tensor(x.numpy())
 
 class Silence(nn.Module):
     def __init__(self):
