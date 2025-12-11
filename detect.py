@@ -102,7 +102,12 @@ class tiny_RepNBottleneck():
 def to_tiny(x):
   if type(x) != tiny_Tensor:
     x = tiny_Tensor(x.detach().numpy())
-    return x
+  return x
+  
+def to_torch(x):
+  if type(x) != Tensor:
+    x = Tensor(x.numpy())
+  return x
 
 class tiny_RepNCSP():
     # CSP Bottleneck with 3 convolutions
@@ -128,9 +133,17 @@ class tiny_RepNCSPELAN4():
         super().__init__()
 
     def __call__(self, x):
-        y = list(self.cv1(x).chunk(2, 1))
-        y.extend((m(y[-1])) for m in [self.cv2, self.cv3])
-        return self.cv4(torch.cat(y, 1))
+      x = to_tiny(x)
+      x = self.cv1(x)
+      x = to_tiny(x)
+      y0, y1 = x.chunk(2, 1)
+      y2 = self.cv2(y1)
+      y3 = self.cv3(y2)
+      y2 = to_tiny(y2)
+      y3 = to_tiny(y3)
+      concat_result = tiny_Tensor.cat(y0, y1, y2, y3, dim=1)
+      res = self.cv4(concat_result)
+      return res
 
 class tiny_SP():
     def __init__(self, k=3, s=1):
