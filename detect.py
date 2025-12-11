@@ -282,13 +282,13 @@ class SP(nn.Module):
     def forward(self, x):
         return self.m(x)
 
-class tiny_SP(nn.Module):
+class tiny_SP():
     def __init__(self, k=3, s=1):
         super(tiny_SP, self).__init__()
         self.k = k
         self.s = s
 
-    def forward(self, x):
+    def __call__(self, x):
         x = tiny_Tensor(x.detach().numpy())
         x = tiny_Tensor.max_pool2d(x, self.k, self.s, dilation=1, padding=self.k//2)
         return Tensor(x.numpy())
@@ -371,7 +371,7 @@ class DDetect(nn.Module):
             nn.Sequential(Conv(x, c3, 3), Conv(c3, c3, 3), nn.Conv2d(c3, self.nc, 1)) for x in ch)
         self.dfl = DFL(self.reg_max) if self.reg_max > 1 else nn.Identity()
 
-    def forward(self, x):
+    def __call__(self, x):
         shape = x[0].shape  # BCHW
         for i in range(self.nl):
             x[i] = torch.cat((self.cv2[i](x[i]), self.cv3[i](x[i])), 1)
@@ -541,13 +541,13 @@ class DFL(nn.Module):
         return self.conv(x.view(b, 4, self.c1, a).transpose(2, 1).softmax(1)).view(b, 4, a)
         # return self.conv(x.view(b, self.c1, 4, a).softmax(1)).view(b, 4, a)
 
-class tiny_DFL(nn.Module):
+class tiny_DFL():
     # DFL module
     def __init__(self, c1=17):
         super().__init__()
         # self.bn = nn.BatchNorm2d(4)
 
-    def forward(self, x):
+    def __call__(self, x):
         if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
         b, _, a = x.shape  # batch, channels, anchors
         x = x.view(b, 4, self.c1, a)
@@ -566,10 +566,10 @@ class tiny_Upsample(nn.Module): # nearest for now
     x = x.repeat_interleave(s, dim=2).repeat_interleave(s, dim=3)
     return Tensor(x.numpy())
 
-class Silence(nn.Module):
+class Silence():
     def __init__(self):
         super(Silence, self).__init__()
-    def forward(self, x):    
+    def __call__(self, x):    
         return x
 
 class DWConv(Conv):
