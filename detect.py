@@ -33,6 +33,8 @@ class tiny_Sequential():
         x = self.list[i](x)
         if type(self.list[i]) == tiny_nn.Conv2d: x = Tensor(x.numpy())
       return x
+    def __len__(self): return len(self.list)
+    def __setitem__(self, key, value): self.list[key] = value
     def __getitem__(self, idx):
       return self.list[idx]
 
@@ -78,11 +80,11 @@ class Conv(nn.Module):
 
     def forward_fuse(self, x): return F.silu(self.conv(x))
 
-class tiny_Conv(nn.Module):
+class tiny_Conv():
     def __init__(self):
         super().__init__()
         return
-    def forward(self, x):
+    def __call__(self, x):
       tiny_x = x
       if type(tiny_x) != tiny_Tensor: tiny_x = tiny_Tensor(tiny_x.detach().numpy())
       tiny_x = self.tiny_conv(tiny_x)
@@ -104,9 +106,9 @@ class ADown(nn.Module):
         x2 = self.cv2(x2)
         return torch.cat((x1, x2), 1)
 
-class tiny_ADown(nn.Module):
+class tiny_ADown():
     def __init__(self, c1=1, c2=1): super().__init__()
-    def forward(self, x):
+    def __call__(self, x):
       if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
       x = tiny_Tensor.avg_pool2d(x, 2, 1, 1, 0, False, True)
       x1,x2 = x.chunk(2, 1)
@@ -132,11 +134,11 @@ class AConv(nn.Module):
         x = torch.nn.functional.avg_pool2d(x, 2, 1, 0, False, True)
         return self.cv1(x)
 
-class tiny_AConv(nn.Module):
+class tiny_AConv():
     def __init__(self):  # ch_in, ch_out, shortcut, kernels, groups, expand
         super().__init__()
 
-    def forward(self, x):
+    def __call__(self, x):
         x = tiny_Tensor(x.detach().numpy())
         x = tiny_Tensor.avg_pool2d(x, kernel_size=2, stride=1, padding=0, ceil_mode=False, count_include_pad=True)
         return self.cv1(x)
@@ -163,11 +165,11 @@ class ELAN1(nn.Module):
         y.extend(m(y[-1]) for m in [self.cv2, self.cv3])
         return self.cv4(torch.cat(y, 1))
 
-class tiny_ELAN1(nn.Module):
+class tiny_ELAN1():
     def __init__(self, c1=1, c2=1, c3=1, c4=1):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
 
-    def forward(self, x):
+    def __call__(self, x):
       if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
       y = self.cv1(x)
       y = tiny_Tensor(y.detach().numpy())
@@ -231,12 +233,12 @@ class RepNCSP(nn.Module):
     def forward(self, x):
         return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), 1))
 
-class tiny_RepNCSP(nn.Module):
+class tiny_RepNCSP():
     # CSP Bottleneck with 3 convolutions
     def __init__(self):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
 
-    def forward(self, x):
+    def __call__(self, x):
         return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), 1))
 
 class RepNCSPELAN4(nn.Module):
@@ -259,12 +261,12 @@ class RepNCSPELAN4(nn.Module):
         y.extend(m(y[-1]) for m in [self.cv2, self.cv3])
         return self.cv4(torch.cat(y, 1))
 
-class tiny_RepNCSPELAN4(nn.Module):
+class tiny_RepNCSPELAN4():
     # csp-elan
     def __init__(self, c1=1, c2=1, c3=1, c4=1, c5=1):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
 
-    def forward(self, x):
+    def __call__(self, x):
         y = list(self.cv1(x).chunk(2, 1))
         y.extend((m(y[-1])) for m in [self.cv2, self.cv3])
         return self.cv4(torch.cat(y, 1))
@@ -309,12 +311,12 @@ class SPPELAN(nn.Module):
         y.extend(m(y[-1]) for m in [self.cv2, self.cv3, self.cv4])
         return self.cv5(torch.cat(y, 1))
 
-class tiny_SPPELAN(nn.Module):
+class tiny_SPPELAN():
     # spp-elan
     def __init__(self):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
 
-    def forward(self, x):
+    def __call__(self, x):
         if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
         y = [self.cv1(x)]
         y.append(self.cv2(y[-1]))
@@ -334,12 +336,12 @@ class Concat(nn.Module):
     def forward(self, x):
         return torch.cat(x, self.d)
 
-class tiny_Concat(nn.Module):
+class tiny_Concat():
     # Concatenate a list of tensors along dimension
     def __init__(self, dimension=1):
         super().__init__()
 
-    def forward(self, x):
+    def __call__(self, x):
       if type(x[0]) != tiny_Tensor: x[0] = tiny_Tensor(x[0].detach().numpy())
       if type(x[1]) != tiny_Tensor: x[1] = tiny_Tensor(x[1].detach().numpy())
       y = tiny_Tensor.cat(x[0],x[1],dim=self.d)
@@ -384,7 +386,7 @@ class DDetect(nn.Module):
         y = torch.cat((dbox, cls.sigmoid()), 1)
         return y if self.export else (y, x)
 
-class tiny_DDetect(nn.Module):
+class tiny_DDetect():
     # YOLO Detect head for detection models
     dynamic = False  # force grid reconstruction
     export = False  # export mode
@@ -409,7 +411,7 @@ class tiny_DDetect(nn.Module):
             nn.Sequential(Conv(x, c3, 3), Conv(c3, c3, 3), nn.Conv2d(c3, self.nc, 1)) for x in ch)
         self.dfl = DFL(self.reg_max) if self.reg_max > 1 else nn.Identity()
 
-    def forward(self, x):
+    def __call__(self, x):
         shape = x[0].shape  # BCHW
         for i in range(self.nl):
             x[i] = torch.cat((self.cv2[i](x[i]), self.cv3[i](x[i])), 1)
@@ -448,12 +450,12 @@ class CBLinear(nn.Module):
         outs = self.conv(x).split(self.c2s, dim=1)
         return outs
 
-class tiny_CBLinear(nn.Module):
+class tiny_CBLinear():
     def __init__(self):  # ch_in, ch_outs, kernel, stride, padding, groups
         super(tiny_CBLinear, self).__init__()
         return
 
-    def forward(self, x):
+    def __call__(self, x):
         if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
         x = self.conv(x)
         outs = x.split(self.c2s, dim=1)
@@ -473,11 +475,11 @@ class CBFuse(nn.Module):
         out = torch.sum(torch.stack(res + xs[-1:]), dim=0)
         return out
 
-class tiny_CBFuse(nn.Module):
+class tiny_CBFuse():
     def __init__(self):
         super(tiny_CBFuse, self).__init__()
 
-    def forward(self, xs):
+    def __call__(self, xs):
         for i in range(len(xs)):
           if type(xs[i]) == tuple:
             xs[i] = list(xs[i])
@@ -555,11 +557,11 @@ class tiny_DFL():
         return Tensor(x.numpy())
 
 
-class tiny_Upsample(nn.Module): # nearest for now
+class tiny_Upsample(): # nearest for now
   def __init__(self):
       super().__init__()
   
-  def forward(self, x):
+  def __call__(self, x):
     if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
     N, C, H, W = x.shape
     s = self.scale_factor
@@ -615,6 +617,7 @@ class tiny_DetectionModel():
         tiny._forward_hooks = m._forward_hooks
         tiny._forward_pre_hooks = m._forward_pre_hooks
 
+
         tiny.conv = tiny_nn.Conv2d(m.conv.in_channels, m.conv.out_channels, m.conv.kernel_size, m.conv.stride, m.conv.padding, m.conv.dilation, m.conv.groups, True if m.conv.bias is not None else False)
         tiny.conv.weight = m.conv.weight
         tiny.conv.bias = m.conv.bias
@@ -622,7 +625,6 @@ class tiny_DetectionModel():
         tiny.tiny_conv = tiny_nn.Conv2d(m.conv.in_channels, m.conv.out_channels, m.conv.kernel_size, m.conv.stride, m.conv.padding, m.conv.dilation, m.conv.groups, True if m.conv.bias is not None else False)
         tiny.tiny_conv.weight = tiny_Tensor(m.conv.weight.detach().numpy().copy())
         tiny.tiny_conv.bias = tiny_Tensor(m.conv.bias.detach().numpy().copy())
-
         self.model[i] = tiny
         m = self.model[i]
       elif type(m) == AConv:
@@ -1386,6 +1388,10 @@ def run():
         tiny_model.model = model.model
         for key, value in vars(model).items(): setattr(tiny_model, key, value)
         model = tiny_model
+
+        tiny_seq = tiny_Sequential()
+        for x in model.model: tiny_seq.append(x)
+        model.model = tiny_seq
 
         model.device = "cpu"
         model.fp16 = False
