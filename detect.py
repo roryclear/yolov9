@@ -197,6 +197,7 @@ class tiny_DDetect():
     
     def __call__(self, x):
         shape = x[0].shape  # BCHW
+        int_stride = self.stride.int().tolist() # todo remove
         for i in range(self.nl):
             x[i] = to_tiny(x[i])
             x0 = self.cv2[i](x[i])
@@ -204,10 +205,7 @@ class tiny_DDetect():
             x0, x1 = to_tiny(x0), to_tiny(x1)
             x[i] = tiny_Tensor.cat(x0, x1, dim=1)
         if self.dynamic or self.shape != shape:
-            int_stride = self.stride.int().tolist() # todo remove
             self.anchors, self.strides = (x.transpose(0, 1) for x in make_anchors(x, int_stride, 0.5))
-            self.anchors = to_torch(self.anchors)
-            self.strides = to_torch(self.strides)
             self.shape = shape
         
         processed_tensors = []
@@ -217,9 +215,9 @@ class tiny_DDetect():
           processed_tensors.append(y)
         concatenated = tiny_Tensor.cat(*processed_tensors, dim=2)
         box, cls = concatenated.split((self.reg_max * 4, self.nc), 1)
-        dbox = dist2bbox(self.dfl(box), self.anchors.unsqueeze(0), xywh=True, dim=1) * self.strides
+        dbox = self.dfl(box)
         dbox = to_tiny(dbox)
-        cls = to_tiny(cls)
+        dbox = dist2bbox(dbox, self.anchors.unsqueeze(0), xywh=True, dim=1) * self.strides
         y = tiny_Tensor.cat(dbox, tiny_Tensor.sigmoid(cls), dim=1)
         y = to_torch(y)
         return y if self.export else (y, x)
@@ -284,15 +282,14 @@ def make_anchors(feats, strides, grid_cell_offset=0.5):
   return anchor_points, stride_tensor
 
 def dist2bbox(distance, anchor_points, xywh=True, dim=-1):
-    """Transform distance(ltrb) to box(xywh or xyxy)."""
-    lt, rb = torch.split(distance, 2, dim)
-    x1y1 = anchor_points - lt
-    x2y2 = anchor_points + rb
-    if xywh:
-        c_xy = (x1y1 + x2y2) / 2
-        wh = x2y2 - x1y1
-        return torch.cat((c_xy, wh), dim)  # xywh bbox
-    return torch.cat((x1y1, x2y2), dim)  # xyxy bbox
+  lt, rb = distance.chunk(2, dim)
+  x1y1 = anchor_points - lt
+  x2y2 = anchor_points + rb
+  if xywh:
+    c_xy = (x1y1 + x2y2) / 2
+    wh = x2y2 - x1y1
+    return c_xy.cat(wh, dim=1)
+  return x1y1.cat(x2y2, dim=1)
 
 class tiny_DFL():
     # DFL module
