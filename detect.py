@@ -1,16 +1,12 @@
 import os
 import sys
 from pathlib import Path
-import torch
-import time
-import torchvision
 import math
 import glob
 import cv2
 import torch.nn as nn
 import pickle
-from torch import Tensor
-from tinygrad import nn as tiny_nn, Tensor as tiny_Tensor
+from tinygrad import nn as tiny_nn, Tensor
 from tinygrad.helpers import fetch
 
 from other import Conv, ADown, AConv, ELAN1, RepNBottleneck, RepNCSP, RepConvN, RepNCSPELAN4, SP, SPPELAN, Concat, DDetect, DFL, CBLinear, CBFuse, DetectionModel
@@ -30,7 +26,7 @@ class tiny_Sequential():
     def append(self,x): self.list.append(x)
     def __call__(self, x):
       for i in range(len(self.list)):
-        if type(self.list[i]) == tiny_nn.Conv2d: x = tiny_Tensor(x.detach().numpy())
+        if type(self.list[i]) == tiny_nn.Conv2d: x = Tensor(x.detach().numpy())
         x = self.list[i](x)
       return x
     def __len__(self): return len(self.list)
@@ -47,23 +43,22 @@ class tiny_Conv():
 class tiny_ADown():
     def __init__(self, c1=1, c2=1): super().__init__()
     def __call__(self, x):
-      if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
-      x = tiny_Tensor.avg_pool2d(x, 2, 1, 1, 0, False, True)
+      x = Tensor.avg_pool2d(x, 2, 1, 1, 0, False, True)
       x1,x2 = x.chunk(2, 1)
       x1 = self.cv1(x1)
-      x1 = tiny_Tensor(x1.detach().numpy())
-      x2 = tiny_Tensor.max_pool2d(x2, kernel_size=3, stride=2, dilation=1, padding=1)
+      x1 = Tensor(x1.detach().numpy())
+      x2 = Tensor.max_pool2d(x2, kernel_size=3, stride=2, dilation=1, padding=1)
       x2 = self.cv2(x2)
-      x2 = tiny_Tensor(x2.detach().numpy())
-      return tiny_Tensor.cat(x1, x2, dim=1)
+      x2 = Tensor(x2.detach().numpy())
+      return Tensor.cat(x1, x2, dim=1)
 
 class tiny_AConv():
     def __init__(self):  # ch_in, ch_out, shortcut, kernels, groups, expand
         super().__init__()
 
     def __call__(self, x):
-        x = tiny_Tensor(x.detach().numpy())
-        x = tiny_Tensor.avg_pool2d(x, kernel_size=2, stride=1, padding=0, ceil_mode=False, count_include_pad=True)
+        x = Tensor(x.detach().numpy())
+        x = Tensor.avg_pool2d(x, kernel_size=2, stride=1, padding=0, ceil_mode=False, count_include_pad=True)
         return self.cv1(x)
 
 class tiny_ELAN1():
@@ -71,15 +66,14 @@ class tiny_ELAN1():
         super().__init__()
 
     def __call__(self, x):
-      if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
       y = self.cv1(x)
-      y = tiny_Tensor(y.detach().numpy())
+      y = Tensor(y.detach().numpy())
       y = y.chunk(2,1)
       y = list(y)
       y.extend(m(y[-1]) for m in [self.cv2, self.cv3])
-      y[-1] = tiny_Tensor(y[-1].detach().numpy())
-      y[-2] = tiny_Tensor(y[-2].detach().numpy())
-      y = tiny_Tensor.cat(y[0], y[1], y[2], y[3], dim=1)
+      y[-1] = Tensor(y[-1].detach().numpy())
+      y[-2] = Tensor(y[-2].detach().numpy())
+      y = Tensor.cat(y[0], y[1], y[2], y[3], dim=1)
       y = self.cv4(y)
       #y = Tensor(y.numpy())
       return y
@@ -92,10 +86,6 @@ class tiny_RepNBottleneck():
     def __call__(self, x):
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
 
-def to_tiny(x):
-  if type(x) != tiny_Tensor:
-    x = tiny_Tensor(x.detach().numpy())
-  return x
   
 class tiny_RepNCSP():
     # CSP Bottleneck with 3 convolutions
@@ -103,16 +93,11 @@ class tiny_RepNCSP():
         super().__init__()
 
     def __call__(self, x):
-      x = to_tiny(x)
       x1 = self.cv1(x)
-      #x1 = to_tiny(x1) todo, breaks
       x2 = self.m(x1)
-      x2 = to_tiny(x2)
       x3 = self.cv2(x)
-      x3 = to_tiny(x3)
-      x4 = tiny_Tensor.cat(x2, x3, dim=1)
+      x4 = Tensor.cat(x2, x3, dim=1)
       result = self.cv3(x4)
-      result = to_tiny(result)
       return result
 
 class tiny_RepNCSPELAN4():
@@ -121,15 +106,11 @@ class tiny_RepNCSPELAN4():
         super().__init__()
 
     def __call__(self, x):
-      x = to_tiny(x)
       x = self.cv1(x)
-      x = to_tiny(x)
       y0, y1 = x.chunk(2, 1)
       y2 = self.cv2(y1)
       y3 = self.cv3(y2)
-      y2 = to_tiny(y2)
-      y3 = to_tiny(y3)
-      concat_result = tiny_Tensor.cat(y0, y1, y2, y3, dim=1)
+      concat_result = Tensor.cat(y0, y1, y2, y3, dim=1)
       res = self.cv4(concat_result)
       return res
 
@@ -139,7 +120,7 @@ class tiny_SP():
         self.k = k
         self.s = s
 
-    def __call__(self, x): return tiny_Tensor.max_pool2d(x, self.k, self.s, dilation=1, padding=self.k//2)
+    def __call__(self, x): return Tensor.max_pool2d(x, self.k, self.s, dilation=1, padding=self.k//2)
 
 class tiny_SPPELAN():
     # spp-elan
@@ -151,7 +132,7 @@ class tiny_SPPELAN():
         y.append(self.cv2(y[-1]))
         y.append(self.cv3(y[-1]))
         y.append(self.cv4(y[-1]))
-        y = tiny_Tensor.cat(*y, dim=1)
+        y = Tensor.cat(*y, dim=1)
         y = self.cv5(y)
         return y
 
@@ -160,7 +141,7 @@ class tiny_Concat():
     def __init__(self, dimension=1):
         super().__init__()
 
-    def __call__(self, x): return tiny_Tensor.cat(x[0],x[1],dim=self.d)
+    def __call__(self, x): return Tensor.cat(x[0],x[1],dim=self.d)
 
 class tiny_DDetect():
     # YOLO Detect head for detection models
@@ -176,26 +157,22 @@ class tiny_DDetect():
         shape = x[0].shape  # BCHW
         int_stride = self.stride.int().tolist() # todo remove
         for i in range(self.nl):
-            x[i] = to_tiny(x[i])
             x0 = self.cv2[i](x[i])
             x1 = self.cv3[i](x[i])
-            x0, x1 = to_tiny(x0), to_tiny(x1)
-            x[i] = tiny_Tensor.cat(x0, x1, dim=1)
+            x[i] = Tensor.cat(x0, x1, dim=1)
         if self.dynamic or self.shape != shape:
             self.anchors, self.strides = (x.transpose(0, 1) for x in make_anchors(x, int_stride, 0.5))
             self.shape = shape
         
         processed_tensors = []
-        for i in range(len(x)): x[i] = to_tiny(x[i])
         for xi in x:
           y = xi.view(shape[0], self.no, -1)
           processed_tensors.append(y)
-        concatenated = tiny_Tensor.cat(*processed_tensors, dim=2)
+        concatenated = Tensor.cat(*processed_tensors, dim=2)
         box, cls = concatenated.split((self.reg_max * 4, self.nc), 1)
         dbox = self.dfl(box)
-        dbox = to_tiny(dbox)
         dbox = dist2bbox(dbox, self.anchors.unsqueeze(0), xywh=True, dim=1) * self.strides
-        y = tiny_Tensor.cat(dbox, tiny_Tensor.sigmoid(cls), dim=1)
+        y = Tensor.cat(dbox, Tensor.sigmoid(cls), dim=1)
         return (y, x)
 
 class tiny_CBLinear():
@@ -204,11 +181,9 @@ class tiny_CBLinear():
         return
 
     def __call__(self, x):
-        if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
         x = self.conv(x)
         outs = x.split(self.c2s, dim=1)
         outs = list(outs)
-        for i in range(len(outs)): outs[i] = Tensor(outs[i].numpy())
         return tuple(outs)
 
 class tiny_CBFuse():
@@ -219,40 +194,36 @@ class tiny_CBFuse():
         for i in range(len(xs)):
           if type(xs[i]) == tuple:
             xs[i] = list(xs[i])
-            for j in range(len(xs[i])):
-              if type(xs[i][j]) != tiny_Tensor: xs[i][j] = tiny_Tensor(xs[i][j].detach().numpy())
             xs[i] = tuple(xs[i])
           else:
-            xs[i] = tiny_Tensor(xs[i].detach().numpy())
+            xs[i] = Tensor(xs[i].detach().numpy())
         target_size = xs[-1].shape[2:]
         res = []
         for i, x in enumerate(xs[:-1]):
             tensor_to_upsample = x[self.idx[i]]
-            upsampled = tiny_Tensor.interpolate(tiny_Tensor(tensor_to_upsample.detach().numpy()), size=target_size, mode='nearest')
+            upsampled = Tensor.interpolate(Tensor(tensor_to_upsample.detach().numpy()), size=target_size, mode='nearest')
             res.append(upsampled)
         
         res += xs[-1:]
 
-        y = tiny_Tensor.stack(*res)
+        y = Tensor.stack(*res)
         out = y.sum(0)
         return out
-
-  #def interpolate(self, size:tuple[int, ...], mode:str="linear", align_corners:bool=False) -> Tensor:
 
 def make_anchors(feats, strides, grid_cell_offset=0.5):
   anchor_points, stride_tensor = [], []
   assert feats is not None
   for i, stride in enumerate(strides):
     _, _, h, w = feats[i].shape
-    sx = tiny_Tensor.arange(w) + grid_cell_offset
-    sy = tiny_Tensor.arange(h) + grid_cell_offset
+    sx = Tensor.arange(w) + grid_cell_offset
+    sy = Tensor.arange(h) + grid_cell_offset
 
     # this is np.meshgrid but in tinygrad
     sx = sx.reshape(1, -1).repeat([h, 1]).reshape(-1)
     sy = sy.reshape(-1, 1).repeat([1, w]).reshape(-1)
 
-    anchor_points.append(tiny_Tensor.stack(sx, sy, dim=-1).reshape(-1, 2))
-    stride_tensor.append(tiny_Tensor.full((h * w), stride))
+    anchor_points.append(Tensor.stack(sx, sy, dim=-1).reshape(-1, 2))
+    stride_tensor.append(Tensor.full((h * w), stride))
   anchor_points = anchor_points[0].cat(anchor_points[1], anchor_points[2])
   stride_tensor = stride_tensor[0].cat(stride_tensor[1], stride_tensor[2]).unsqueeze(1)
   return anchor_points, stride_tensor
@@ -284,7 +255,6 @@ class tiny_Upsample(): # nearest for now
       super().__init__()
   
   def __call__(self, x):
-    if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
     N, C, H, W = x.shape
     s = self.scale_factor
     return x.repeat_interleave(s, dim=2).repeat_interleave(s, dim=3)
@@ -313,8 +283,8 @@ class tiny_DetectionModel():
         tiny.conv.bias = m.conv.bias
 
         tiny.tiny_conv = tiny_nn.Conv2d(m.conv.in_channels, m.conv.out_channels, m.conv.kernel_size, m.conv.stride, m.conv.padding, m.conv.dilation, m.conv.groups, True if m.conv.bias is not None else False)
-        tiny.tiny_conv.weight = tiny_Tensor(m.conv.weight.detach().numpy().copy())
-        tiny.tiny_conv.bias = tiny_Tensor(m.conv.bias.detach().numpy().copy())
+        tiny.tiny_conv.weight = Tensor(m.conv.weight.detach().numpy().copy())
+        tiny.tiny_conv.bias = Tensor(m.conv.bias.detach().numpy().copy())
         self.model[i] = tiny
         m = self.model[i]
       elif type(m) == AConv:
@@ -327,8 +297,8 @@ class tiny_DetectionModel():
 
         tiny_cv1 = tiny_Conv()
         tiny_cv1.tiny_conv = tiny_nn.Conv2d(m.cv1.conv.in_channels, m.cv1.conv.out_channels, m.cv1.conv.kernel_size, m.cv1.conv.stride, m.cv1.conv.padding, m.cv1.conv.dilation, m.cv1.conv.groups, True if m.cv1.conv.bias is not None else False)
-        tiny_cv1.tiny_conv.weight = tiny_Tensor(m.cv1.conv.weight.detach().numpy().copy())
-        tiny_cv1.tiny_conv.bias = tiny_Tensor(m.cv1.conv.bias.detach().numpy().copy())
+        tiny_cv1.tiny_conv.weight = Tensor(m.cv1.conv.weight.detach().numpy().copy())
+        tiny_cv1.tiny_conv.bias = Tensor(m.cv1.conv.bias.detach().numpy().copy())
         tiny.cv1 = tiny_cv1
         self.model[i] = tiny
         m = self.model[i]
@@ -342,14 +312,14 @@ class tiny_DetectionModel():
 
         tiny_cv1 = tiny_Conv()
         tiny_cv1.tiny_conv = tiny_nn.Conv2d(m.cv1.conv.in_channels, m.cv1.conv.out_channels, m.cv1.conv.kernel_size, m.cv1.conv.stride, m.cv1.conv.padding, m.cv1.conv.dilation, m.cv1.conv.groups, True if m.cv1.conv.bias is not None else False)
-        tiny_cv1.tiny_conv.weight = tiny_Tensor(m.cv1.conv.weight.detach().numpy().copy())
-        tiny_cv1.tiny_conv.bias = tiny_Tensor(m.cv1.conv.bias.detach().numpy().copy())
+        tiny_cv1.tiny_conv.weight = Tensor(m.cv1.conv.weight.detach().numpy().copy())
+        tiny_cv1.tiny_conv.bias = Tensor(m.cv1.conv.bias.detach().numpy().copy())
         tiny.cv1 = tiny_cv1
 
         tiny_cv2 = tiny_Conv()
         tiny_cv2.tiny_conv = tiny_nn.Conv2d(m.cv2.conv.in_channels, m.cv2.conv.out_channels, m.cv2.conv.kernel_size, m.cv2.conv.stride, m.cv2.conv.padding, m.cv2.conv.dilation, m.cv2.conv.groups, True if m.cv2.conv.bias is not None else False)
-        tiny_cv2.tiny_conv.weight = tiny_Tensor(m.cv2.conv.weight.detach().numpy().copy())
-        tiny_cv2.tiny_conv.bias = tiny_Tensor(m.cv2.conv.bias.detach().numpy().copy())
+        tiny_cv2.tiny_conv.weight = Tensor(m.cv2.conv.weight.detach().numpy().copy())
+        tiny_cv2.tiny_conv.bias = Tensor(m.cv2.conv.bias.detach().numpy().copy())
         tiny.cv2 = tiny_cv2
 
         self.model[i] = tiny
@@ -366,26 +336,26 @@ class tiny_DetectionModel():
 
         tiny_cv1 = tiny_Conv()
         tiny_cv1.tiny_conv = tiny_nn.Conv2d(m.cv1.conv.in_channels, m.cv1.conv.out_channels, m.cv1.conv.kernel_size, m.cv1.conv.stride, m.cv1.conv.padding, m.cv1.conv.dilation, m.cv1.conv.groups, True if m.cv1.conv.bias is not None else False)
-        tiny_cv1.tiny_conv.weight = tiny_Tensor(m.cv1.conv.weight.detach().numpy().copy())
-        tiny_cv1.tiny_conv.bias = tiny_Tensor(m.cv1.conv.bias.detach().numpy().copy())
+        tiny_cv1.tiny_conv.weight = Tensor(m.cv1.conv.weight.detach().numpy().copy())
+        tiny_cv1.tiny_conv.bias = Tensor(m.cv1.conv.bias.detach().numpy().copy())
         tiny.cv1 = tiny_cv1
 
         tiny_cv2 = tiny_Conv()
         tiny_cv2.tiny_conv = tiny_nn.Conv2d(m.cv2.conv.in_channels, m.cv2.conv.out_channels, m.cv2.conv.kernel_size, m.cv2.conv.stride, m.cv2.conv.padding, m.cv2.conv.dilation, m.cv2.conv.groups, True if m.cv2.conv.bias is not None else False)
-        tiny_cv2.tiny_conv.weight = tiny_Tensor(m.cv2.conv.weight.detach().numpy().copy())
-        tiny_cv2.tiny_conv.bias = tiny_Tensor(m.cv2.conv.bias.detach().numpy().copy())
+        tiny_cv2.tiny_conv.weight = Tensor(m.cv2.conv.weight.detach().numpy().copy())
+        tiny_cv2.tiny_conv.bias = Tensor(m.cv2.conv.bias.detach().numpy().copy())
         tiny.cv2 = tiny_cv2
 
         tiny_cv3 = tiny_Conv()
         tiny_cv3.tiny_conv = tiny_nn.Conv2d(m.cv3.conv.in_channels, m.cv3.conv.out_channels, m.cv3.conv.kernel_size, m.cv3.conv.stride, m.cv3.conv.padding, m.cv3.conv.dilation, m.cv3.conv.groups, True if m.cv3.conv.bias is not None else False)
-        tiny_cv3.tiny_conv.weight = tiny_Tensor(m.cv3.conv.weight.detach().numpy().copy())
-        tiny_cv3.tiny_conv.bias = tiny_Tensor(m.cv3.conv.bias.detach().numpy().copy())
+        tiny_cv3.tiny_conv.weight = Tensor(m.cv3.conv.weight.detach().numpy().copy())
+        tiny_cv3.tiny_conv.bias = Tensor(m.cv3.conv.bias.detach().numpy().copy())
         tiny.cv3 = tiny_cv3
 
         tiny_cv4 = tiny_Conv()
         tiny_cv4.tiny_conv = tiny_nn.Conv2d(m.cv4.conv.in_channels, m.cv4.conv.out_channels, m.cv4.conv.kernel_size, m.cv4.conv.stride, m.cv4.conv.padding, m.cv4.conv.dilation, m.cv4.conv.groups, True if m.cv4.conv.bias is not None else False)
-        tiny_cv4.tiny_conv.weight = tiny_Tensor(m.cv4.conv.weight.detach().numpy().copy())
-        tiny_cv4.tiny_conv.bias = tiny_Tensor(m.cv4.conv.bias.detach().numpy().copy())
+        tiny_cv4.tiny_conv.weight = Tensor(m.cv4.conv.weight.detach().numpy().copy())
+        tiny_cv4.tiny_conv.bias = Tensor(m.cv4.conv.bias.detach().numpy().copy())
         tiny.cv4 = tiny_cv4
 
         self.model[i] = tiny
@@ -399,8 +369,8 @@ class tiny_DetectionModel():
         tiny._forward_pre_hooks = m._forward_pre_hooks
 
         tiny.conv = tiny_nn.Conv2d(m.conv.in_channels, m.conv.out_channels, m.conv.kernel_size, m.conv.stride, m.conv.padding, m.conv.dilation, m.conv.groups, True if m.conv.bias is not None else False)
-        tiny.conv.weight = tiny_Tensor(m.conv.weight.detach().numpy().copy())
-        tiny.conv.bias = tiny_Tensor(m.conv.bias.detach().numpy().copy())
+        tiny.conv.weight = Tensor(m.conv.weight.detach().numpy().copy())
+        tiny.conv.bias = Tensor(m.conv.bias.detach().numpy().copy())
         tiny.c2s = m.c2s
 
         self.model[i] = tiny
@@ -445,13 +415,13 @@ class tiny_DetectionModel():
             if type(m.cv3[j][k]) == Conv:
               tiny_conv = tiny_Conv()
               tiny_conv.tiny_conv = tiny_nn.Conv2d(m.cv3[j][k].conv.in_channels, m.cv3[j][k].conv.out_channels, m.cv3[j][k].conv.kernel_size, m.cv3[j][k].conv.stride, m.cv3[j][k].conv.padding, m.cv3[j][k].conv.dilation, m.cv3[j][k].conv.groups, True if m.cv3[j][k].conv.bias is not None else False)
-              tiny_conv.tiny_conv.weight = tiny_Tensor(m.cv3[j][k].conv.weight.detach().numpy().copy())
-              tiny_conv.tiny_conv.bias = tiny_Tensor(m.cv3[j][k].conv.bias.detach().numpy().copy())
+              tiny_conv.tiny_conv.weight = Tensor(m.cv3[j][k].conv.weight.detach().numpy().copy())
+              tiny_conv.tiny_conv.bias = Tensor(m.cv3[j][k].conv.bias.detach().numpy().copy())
               tiny_seq_2.append(tiny_conv)
             else:
               tiny_conv = tiny_nn.Conv2d(m.cv3[j][k].in_channels, m.cv3[j][k].out_channels, m.cv3[j][k].kernel_size, m.cv3[j][k].stride, m.cv3[j][k].padding, m.cv3[j][k].dilation, m.cv3[j][k].groups, True if m.cv3[j][k].bias is not None else False)
-              tiny_conv.weight = tiny_Tensor(m.cv3[j][k].weight.detach().numpy().copy())
-              tiny_conv.bias = tiny_Tensor(m.cv3[j][k].bias.detach().numpy().copy())
+              tiny_conv.weight = Tensor(m.cv3[j][k].weight.detach().numpy().copy())
+              tiny_conv.bias = Tensor(m.cv3[j][k].bias.detach().numpy().copy())
               tiny_seq_2.append(tiny_conv)
           tiny_seq.append(tiny_seq_2)
         
@@ -466,27 +436,27 @@ class tiny_DetectionModel():
         tiny.dfl = tiny_DFL()
         tiny.dfl.c1 = m.dfl.c1
         tiny.dfl.conv = tiny_nn.Conv2d(tiny.dfl.c1, 1, 1, bias=False)
-        tiny.dfl.conv.weight = tiny_Tensor(m.dfl.conv.weight.detach().numpy().copy())
+        tiny.dfl.conv.weight = Tensor(m.dfl.conv.weight.detach().numpy().copy())
 
         tiny_cv2 = tiny_Sequential()
 
         tiny_seq = tiny_Sequential()          
         tiny_conv = tiny_Conv()
         tiny_conv.tiny_conv = tiny_nn.Conv2d(m.cv2[0][0].conv.in_channels, m.cv2[0][0].conv.out_channels, m.cv2[0][0].conv.kernel_size, m.cv2[0][0].conv.stride, m.cv2[0][0].conv.padding, m.cv2[0][0].conv.dilation, m.cv2[0][0].conv.groups, True if m.cv2[0][0].conv.bias is not None else False)
-        tiny_conv.tiny_conv.weight = tiny_Tensor(m.cv2[0][0].conv.weight.detach().numpy().copy())
-        tiny_conv.tiny_conv.bias = tiny_Tensor(m.cv2[0][0].conv.bias.detach().numpy().copy())
+        tiny_conv.tiny_conv.weight = Tensor(m.cv2[0][0].conv.weight.detach().numpy().copy())
+        tiny_conv.tiny_conv.bias = Tensor(m.cv2[0][0].conv.bias.detach().numpy().copy())
         tiny_seq.append(tiny_conv)
 
         tiny_conv = tiny_Conv()
         tiny_conv.tiny_conv = tiny_nn.Conv2d(m.cv2[0][1].conv.in_channels, m.cv2[0][1].conv.out_channels, m.cv2[0][1].conv.kernel_size, m.cv2[0][1].conv.stride, m.cv2[0][1].conv.padding, m.cv2[0][1].conv.dilation, m.cv2[0][1].conv.groups, True if m.cv2[0][1].conv.bias is not None else False)
-        tiny_conv.tiny_conv.weight = tiny_Tensor(m.cv2[0][1].conv.weight.detach().numpy().copy())
-        tiny_conv.tiny_conv.bias = tiny_Tensor(m.cv2[0][1].conv.bias.detach().numpy().copy())
+        tiny_conv.tiny_conv.weight = Tensor(m.cv2[0][1].conv.weight.detach().numpy().copy())
+        tiny_conv.tiny_conv.bias = Tensor(m.cv2[0][1].conv.bias.detach().numpy().copy())
         tiny_seq.append(tiny_conv)
 
         # todo switch?
         tiny_conv = tiny_nn.Conv2d(m.cv2[0][2].in_channels, m.cv2[0][2].out_channels, m.cv2[0][2].kernel_size, m.cv2[0][2].stride, m.cv2[0][2].padding, m.cv2[0][2].dilation, m.cv2[0][2].groups, True if m.cv2[0][2].bias is not None else False)
-        tiny_conv.weight = tiny_Tensor(m.cv2[0][2].weight.detach().numpy().copy())
-        tiny_conv.bias = tiny_Tensor(m.cv2[0][2].bias.detach().numpy().copy())
+        tiny_conv.weight = Tensor(m.cv2[0][2].weight.detach().numpy().copy())
+        tiny_conv.bias = Tensor(m.cv2[0][2].bias.detach().numpy().copy())
         tiny_seq.append(tiny_conv)
         tiny_cv2.append(tiny_seq)
 
@@ -494,19 +464,19 @@ class tiny_DetectionModel():
         tiny_seq = tiny_Sequential()          
         tiny_conv = tiny_Conv()
         tiny_conv.tiny_conv = tiny_nn.Conv2d(m.cv2[1][0].conv.in_channels, m.cv2[1][0].conv.out_channels, m.cv2[1][0].conv.kernel_size, m.cv2[1][0].conv.stride, m.cv2[1][0].conv.padding, m.cv2[1][0].conv.dilation, m.cv2[1][0].conv.groups, True if m.cv2[1][0].conv.bias is not None else False)
-        tiny_conv.tiny_conv.weight = tiny_Tensor(m.cv2[1][0].conv.weight.detach().numpy().copy())
-        tiny_conv.tiny_conv.bias = tiny_Tensor(m.cv2[1][0].conv.bias.detach().numpy().copy())
+        tiny_conv.tiny_conv.weight = Tensor(m.cv2[1][0].conv.weight.detach().numpy().copy())
+        tiny_conv.tiny_conv.bias = Tensor(m.cv2[1][0].conv.bias.detach().numpy().copy())
         tiny_seq.append(tiny_conv)
 
         tiny_conv = tiny_Conv()
         tiny_conv.tiny_conv = tiny_nn.Conv2d(m.cv2[1][1].conv.in_channels, m.cv2[1][1].conv.out_channels, m.cv2[1][1].conv.kernel_size, m.cv2[1][1].conv.stride, m.cv2[1][1].conv.padding, m.cv2[1][1].conv.dilation, m.cv2[1][1].conv.groups, True if m.cv2[1][1].conv.bias is not None else False)
-        tiny_conv.tiny_conv.weight = tiny_Tensor(m.cv2[1][1].conv.weight.detach().numpy().copy())
-        tiny_conv.tiny_conv.bias = tiny_Tensor(m.cv2[1][1].conv.bias.detach().numpy().copy())
+        tiny_conv.tiny_conv.weight = Tensor(m.cv2[1][1].conv.weight.detach().numpy().copy())
+        tiny_conv.tiny_conv.bias = Tensor(m.cv2[1][1].conv.bias.detach().numpy().copy())
         tiny_seq.append(tiny_conv)
 
         tiny_conv = tiny_nn.Conv2d(m.cv2[1][2].in_channels, m.cv2[1][2].out_channels, m.cv2[1][2].kernel_size, m.cv2[1][2].stride, m.cv2[1][2].padding, m.cv2[1][2].dilation, m.cv2[1][2].groups, True if m.cv2[1][2].bias is not None else False)
-        tiny_conv.weight = tiny_Tensor(m.cv2[1][2].weight.detach().numpy().copy())
-        tiny_conv.bias = tiny_Tensor(m.cv2[1][2].bias.detach().numpy().copy())
+        tiny_conv.weight = Tensor(m.cv2[1][2].weight.detach().numpy().copy())
+        tiny_conv.bias = Tensor(m.cv2[1][2].bias.detach().numpy().copy())
         tiny_seq.append(tiny_conv)
         tiny_cv2.append(tiny_seq)
 
@@ -514,19 +484,19 @@ class tiny_DetectionModel():
         tiny_seq = tiny_Sequential()          
         tiny_conv = tiny_Conv()
         tiny_conv.tiny_conv = tiny_nn.Conv2d(m.cv2[2][0].conv.in_channels, m.cv2[2][0].conv.out_channels, m.cv2[2][0].conv.kernel_size, m.cv2[2][0].conv.stride, m.cv2[2][0].conv.padding, m.cv2[2][0].conv.dilation, m.cv2[2][0].conv.groups, True if m.cv2[2][0].conv.bias is not None else False)
-        tiny_conv.tiny_conv.weight = tiny_Tensor(m.cv2[2][0].conv.weight.detach().numpy().copy())
-        tiny_conv.tiny_conv.bias = tiny_Tensor(m.cv2[2][0].conv.bias.detach().numpy().copy())
+        tiny_conv.tiny_conv.weight = Tensor(m.cv2[2][0].conv.weight.detach().numpy().copy())
+        tiny_conv.tiny_conv.bias = Tensor(m.cv2[2][0].conv.bias.detach().numpy().copy())
         tiny_seq.append(tiny_conv)
 
         tiny_conv = tiny_Conv()
         tiny_conv.tiny_conv = tiny_nn.Conv2d(m.cv2[2][1].conv.in_channels, m.cv2[2][1].conv.out_channels, m.cv2[2][1].conv.kernel_size, m.cv2[2][1].conv.stride, m.cv2[2][1].conv.padding, m.cv2[2][1].conv.dilation, m.cv2[2][1].conv.groups, True if m.cv2[2][1].conv.bias is not None else False)
-        tiny_conv.tiny_conv.weight = tiny_Tensor(m.cv2[2][1].conv.weight.detach().numpy().copy())
-        tiny_conv.tiny_conv.bias = tiny_Tensor(m.cv2[2][1].conv.bias.detach().numpy().copy())
+        tiny_conv.tiny_conv.weight = Tensor(m.cv2[2][1].conv.weight.detach().numpy().copy())
+        tiny_conv.tiny_conv.bias = Tensor(m.cv2[2][1].conv.bias.detach().numpy().copy())
         tiny_seq.append(tiny_conv)
 
         tiny_conv = tiny_nn.Conv2d(m.cv2[2][2].in_channels, m.cv2[2][2].out_channels, m.cv2[2][2].kernel_size, m.cv2[2][2].stride, m.cv2[2][2].padding, m.cv2[2][2].dilation, m.cv2[2][2].groups, True if m.cv2[1][2].bias is not None else False)
-        tiny_conv.weight = tiny_Tensor(m.cv2[2][2].weight.detach().numpy().copy())
-        tiny_conv.bias = tiny_Tensor(m.cv2[2][2].bias.detach().numpy().copy())
+        tiny_conv.weight = Tensor(m.cv2[2][2].weight.detach().numpy().copy())
+        tiny_conv.bias = Tensor(m.cv2[2][2].bias.detach().numpy().copy())
         tiny_seq.append(tiny_conv)
         tiny_cv2.append(tiny_seq)
 
@@ -545,16 +515,16 @@ class tiny_DetectionModel():
 
         tiny_cv1 = tiny_Conv()
         tiny_cv1.tiny_conv = tiny_nn.Conv2d(m.cv1.conv.in_channels, m.cv1.conv.out_channels, m.cv1.conv.kernel_size, m.cv1.conv.stride, m.cv1.conv.padding, m.cv1.conv.dilation, m.cv1.conv.groups, True if m.cv1.conv.bias is not None else False)
-        tiny_cv1.tiny_conv.weight = tiny_Tensor(m.cv1.conv.weight.detach().numpy().copy())
-        tiny_cv1.tiny_conv.bias = tiny_Tensor(m.cv1.conv.bias.detach().numpy().copy())
+        tiny_cv1.tiny_conv.weight = Tensor(m.cv1.conv.weight.detach().numpy().copy())
+        tiny_cv1.tiny_conv.bias = Tensor(m.cv1.conv.bias.detach().numpy().copy())
         tiny.cv1 = tiny_cv1
         tiny.cv2 = tiny_SP(m.cv2.m.kernel_size, m.cv2.m.stride)
         tiny.cv3 = tiny_SP(m.cv3.m.kernel_size, m.cv3.m.stride)
         tiny.cv4 = tiny_SP(m.cv4.m.kernel_size, m.cv4.m.stride)
         tiny.cv5 = tiny_Conv()
         tiny.cv5.tiny_conv = tiny_nn.Conv2d(m.cv5.conv.in_channels, m.cv5.conv.out_channels, m.cv5.conv.kernel_size, m.cv5.conv.stride, m.cv5.conv.padding, m.cv5.conv.dilation, m.cv5.conv.groups, True if m.cv5.conv.bias is not None else False)
-        tiny.cv5.tiny_conv.weight = tiny_Tensor(m.cv5.conv.weight.detach().numpy())
-        tiny.cv5.tiny_conv.bias = tiny_Tensor(m.cv5.conv.bias.detach().numpy())
+        tiny.cv5.tiny_conv.weight = Tensor(m.cv5.conv.weight.detach().numpy())
+        tiny.cv5.tiny_conv.bias = Tensor(m.cv5.conv.bias.detach().numpy())
 
         self.model[i] = tiny
         m = tiny
@@ -569,36 +539,36 @@ class tiny_DetectionModel():
 
         tiny_cv1 = tiny_Conv()
         tiny_cv1.tiny_conv = tiny_nn.Conv2d(m.cv1.conv.in_channels, m.cv1.conv.out_channels, m.cv1.conv.kernel_size, m.cv1.conv.stride, m.cv1.conv.padding, m.cv1.conv.dilation, m.cv1.conv.groups, True if m.cv1.conv.bias is not None else False)
-        tiny_cv1.tiny_conv.weight = tiny_Tensor(m.cv1.conv.weight.detach().numpy().copy())
-        tiny_cv1.tiny_conv.bias = tiny_Tensor(m.cv1.conv.bias.detach().numpy().copy())
+        tiny_cv1.tiny_conv.weight = Tensor(m.cv1.conv.weight.detach().numpy().copy())
+        tiny_cv1.tiny_conv.bias = Tensor(m.cv1.conv.bias.detach().numpy().copy())
         tiny.cv1 = tiny_cv1
 
         tiny_seq = tiny_Sequential() # todo
         tiny_rn = tiny_RepNCSP()
         tiny_rn.cv1 = tiny_Conv()
         tiny_rn.cv1.tiny_conv = tiny_nn.Conv2d(m.cv2[0].cv1.conv.in_channels, m.cv2[0].cv1.conv.out_channels, m.cv2[0].cv1.conv.kernel_size, m.cv2[0].cv1.conv.stride, m.cv2[0].cv1.conv.padding, m.cv2[0].cv1.conv.dilation, m.cv2[0].cv1.conv.groups, True if m.cv2[0].cv1.conv.bias is not None else False)
-        tiny_rn.cv1.tiny_conv.weight = tiny_Tensor(m.cv2[0].cv1.conv.weight.detach().numpy().copy())
-        tiny_rn.cv1.tiny_conv.bias = tiny_Tensor(m.cv2[0].cv1.conv.bias.detach().numpy().copy())
+        tiny_rn.cv1.tiny_conv.weight = Tensor(m.cv2[0].cv1.conv.weight.detach().numpy().copy())
+        tiny_rn.cv1.tiny_conv.bias = Tensor(m.cv2[0].cv1.conv.bias.detach().numpy().copy())
         tiny_rn.cv2 = tiny_Conv()
         tiny_rn.cv2.tiny_conv = tiny_nn.Conv2d(m.cv2[0].cv2.conv.in_channels, m.cv2[0].cv2.conv.out_channels, m.cv2[0].cv2.conv.kernel_size, m.cv2[0].cv2.conv.stride, m.cv2[0].cv2.conv.padding, m.cv2[0].cv2.conv.dilation, m.cv2[0].cv2.conv.groups, True if m.cv2[0].cv2.conv.bias is not None else False)
-        tiny_rn.cv2.tiny_conv.weight = tiny_Tensor(m.cv2[0].cv2.conv.weight.detach().numpy().copy())
-        tiny_rn.cv2.tiny_conv.bias = tiny_Tensor(m.cv2[0].cv2.conv.bias.detach().numpy().copy())
+        tiny_rn.cv2.tiny_conv.weight = Tensor(m.cv2[0].cv2.conv.weight.detach().numpy().copy())
+        tiny_rn.cv2.tiny_conv.bias = Tensor(m.cv2[0].cv2.conv.bias.detach().numpy().copy())
         tiny_rn.cv3 = tiny_Conv()
         tiny_rn.cv3.tiny_conv = tiny_nn.Conv2d(m.cv2[0].cv3.conv.in_channels, m.cv2[0].cv3.conv.out_channels, m.cv2[0].cv3.conv.kernel_size, m.cv2[0].cv3.conv.stride, m.cv2[0].cv3.conv.padding, m.cv2[0].cv3.conv.dilation, m.cv2[0].cv3.conv.groups, True if m.cv2[0].cv3.conv.bias is not None else False)
-        tiny_rn.cv3.tiny_conv.weight = tiny_Tensor(m.cv2[0].cv3.conv.weight.detach().numpy().copy())
-        tiny_rn.cv3.tiny_conv.bias = tiny_Tensor(m.cv2[0].cv3.conv.bias.detach().numpy().copy())
+        tiny_rn.cv3.tiny_conv.weight = Tensor(m.cv2[0].cv3.conv.weight.detach().numpy().copy())
+        tiny_rn.cv3.tiny_conv.bias = Tensor(m.cv2[0].cv3.conv.bias.detach().numpy().copy())
 
         tiny_seq_2 = tiny_Sequential()
         for j in range(len(m.cv2[0].m)):
           tiny_btl = tiny_RepNBottleneck()
           tiny_btl.cv1 = tiny_Conv()
           tiny_btl.cv1.tiny_conv = tiny_nn.Conv2d(m.cv2[0].m[j].cv1.conv.in_channels, m.cv2[0].m[j].cv1.conv.out_channels, m.cv2[0].m[j].cv1.conv.kernel_size, m.cv2[0].m[j].cv1.conv.stride, m.cv2[0].m[j].cv1.conv.padding, m.cv2[0].m[j].cv1.conv.dilation, m.cv2[0].m[j].cv1.conv.groups, True if m.cv2[0].m[j].cv1.conv.bias is not None else False)
-          tiny_btl.cv1.tiny_conv.weight = tiny_Tensor(m.cv2[0].m[j].cv1.conv.weight.detach().numpy().copy())
-          tiny_btl.cv1.tiny_conv.bias = tiny_Tensor(m.cv2[0].m[j].cv1.conv.bias.detach().numpy().copy())
+          tiny_btl.cv1.tiny_conv.weight = Tensor(m.cv2[0].m[j].cv1.conv.weight.detach().numpy().copy())
+          tiny_btl.cv1.tiny_conv.bias = Tensor(m.cv2[0].m[j].cv1.conv.bias.detach().numpy().copy())
           tiny_btl.cv2 = tiny_Conv()
           tiny_btl.cv2.tiny_conv = tiny_nn.Conv2d(m.cv2[0].m[j].cv2.conv.in_channels, m.cv2[0].m[j].cv2.conv.out_channels, m.cv2[0].m[j].cv2.conv.kernel_size, m.cv2[0].m[j].cv2.conv.stride, m.cv2[0].m[j].cv2.conv.padding, m.cv2[0].m[j].cv2.conv.dilation, m.cv2[0].m[j].cv1.conv.groups, True if m.cv2[0].m[j].cv2.conv.bias is not None else False)
-          tiny_btl.cv2.tiny_conv.weight = tiny_Tensor(m.cv2[0].m[j].cv2.conv.weight.detach().numpy().copy())
-          tiny_btl.cv2.tiny_conv.bias = tiny_Tensor(m.cv2[0].m[j].cv2.conv.bias.detach().numpy().copy())
+          tiny_btl.cv2.tiny_conv.weight = Tensor(m.cv2[0].m[j].cv2.conv.weight.detach().numpy().copy())
+          tiny_btl.cv2.tiny_conv.bias = Tensor(m.cv2[0].m[j].cv2.conv.bias.detach().numpy().copy())
 
           tiny_btl.add = m.cv2[0].m[j].add
           tiny_seq_2.append(tiny_btl) # todo
@@ -607,8 +577,8 @@ class tiny_DetectionModel():
 
         tiny_seq_cv2 = tiny_Conv()
         tiny_seq_cv2.tiny_conv = tiny_nn.Conv2d(m.cv2[1].conv.in_channels, m.cv2[1].conv.out_channels, m.cv2[1].conv.kernel_size, m.cv2[1].conv.stride, m.cv2[1].conv.padding, m.cv2[1].conv.dilation, m.cv2[1].conv.groups, True if m.cv2[1].conv.bias is not None else False)
-        tiny_seq_cv2.tiny_conv.weight = tiny_Tensor(m.cv2[1].conv.weight.detach().numpy().copy())
-        tiny_seq_cv2.tiny_conv.bias = tiny_Tensor(m.cv2[1].conv.bias.detach().numpy().copy())
+        tiny_seq_cv2.tiny_conv.weight = Tensor(m.cv2[1].conv.weight.detach().numpy().copy())
+        tiny_seq_cv2.tiny_conv.bias = Tensor(m.cv2[1].conv.bias.detach().numpy().copy())
         tiny_seq.append(tiny_seq_cv2)
         tiny.cv2 = tiny_seq
 
@@ -617,28 +587,28 @@ class tiny_DetectionModel():
         tiny_rn = tiny_RepNCSP()
         tiny_rn.cv1 = tiny_Conv()
         tiny_rn.cv1.tiny_conv = tiny_nn.Conv2d(m.cv3[0].cv1.conv.in_channels, m.cv3[0].cv1.conv.out_channels, m.cv3[0].cv1.conv.kernel_size, m.cv3[0].cv1.conv.stride, m.cv3[0].cv1.conv.padding, m.cv3[0].cv1.conv.dilation, m.cv3[0].cv1.conv.groups, True if m.cv3[0].cv1.conv.bias is not None else False)
-        tiny_rn.cv1.tiny_conv.weight = tiny_Tensor(m.cv3[0].cv1.conv.weight.detach().numpy().copy())
-        tiny_rn.cv1.tiny_conv.bias = tiny_Tensor(m.cv3[0].cv1.conv.bias.detach().numpy().copy())
+        tiny_rn.cv1.tiny_conv.weight = Tensor(m.cv3[0].cv1.conv.weight.detach().numpy().copy())
+        tiny_rn.cv1.tiny_conv.bias = Tensor(m.cv3[0].cv1.conv.bias.detach().numpy().copy())
         tiny_rn.cv2 = tiny_Conv()
         tiny_rn.cv2.tiny_conv = tiny_nn.Conv2d(m.cv3[0].cv2.conv.in_channels, m.cv3[0].cv2.conv.out_channels, m.cv3[0].cv2.conv.kernel_size, m.cv3[0].cv2.conv.stride, m.cv3[0].cv2.conv.padding, m.cv3[0].cv2.conv.dilation, m.cv3[0].cv2.conv.groups, True if m.cv3[0].cv2.conv.bias is not None else False)
-        tiny_rn.cv2.tiny_conv.weight = tiny_Tensor(m.cv3[0].cv2.conv.weight.detach().numpy().copy())
-        tiny_rn.cv2.tiny_conv.bias = tiny_Tensor(m.cv3[0].cv2.conv.bias.detach().numpy().copy())
+        tiny_rn.cv2.tiny_conv.weight = Tensor(m.cv3[0].cv2.conv.weight.detach().numpy().copy())
+        tiny_rn.cv2.tiny_conv.bias = Tensor(m.cv3[0].cv2.conv.bias.detach().numpy().copy())
         tiny_rn.cv3 = tiny_Conv()
         tiny_rn.cv3.tiny_conv = tiny_nn.Conv2d(m.cv3[0].cv3.conv.in_channels, m.cv3[0].cv3.conv.out_channels, m.cv3[0].cv3.conv.kernel_size, m.cv3[0].cv3.conv.stride, m.cv3[0].cv3.conv.padding, m.cv3[0].cv3.conv.dilation, m.cv3[0].cv3.conv.groups, True if m.cv3[0].cv3.conv.bias is not None else False)
-        tiny_rn.cv3.tiny_conv.weight = tiny_Tensor(m.cv3[0].cv3.conv.weight.detach().numpy().copy())
-        tiny_rn.cv3.tiny_conv.bias = tiny_Tensor(m.cv3[0].cv3.conv.bias.detach().numpy().copy())
+        tiny_rn.cv3.tiny_conv.weight = Tensor(m.cv3[0].cv3.conv.weight.detach().numpy().copy())
+        tiny_rn.cv3.tiny_conv.bias = Tensor(m.cv3[0].cv3.conv.bias.detach().numpy().copy())
         
         tiny_seq_2 = tiny_Sequential()
         for j in range(len(m.cv3[0].m)):
           tiny_btl = tiny_RepNBottleneck()
           tiny_btl.cv1 = tiny_Conv()
           tiny_btl.cv1.tiny_conv = tiny_nn.Conv2d(m.cv3[0].m[j].cv1.conv.in_channels, m.cv3[0].m[j].cv1.conv.out_channels, m.cv3[0].m[j].cv1.conv.kernel_size, m.cv3[0].m[j].cv1.conv.stride, m.cv3[0].m[j].cv1.conv.padding, m.cv3[0].m[j].cv1.conv.dilation, m.cv3[0].m[j].cv1.conv.groups, True if m.cv3[0].m[j].cv1.conv.bias is not None else False)
-          tiny_btl.cv1.tiny_conv.weight = tiny_Tensor(m.cv3[0].m[j].cv1.conv.weight.detach().numpy().copy())
-          tiny_btl.cv1.tiny_conv.bias = tiny_Tensor(m.cv3[0].m[j].cv1.conv.bias.detach().numpy().copy())
+          tiny_btl.cv1.tiny_conv.weight = Tensor(m.cv3[0].m[j].cv1.conv.weight.detach().numpy().copy())
+          tiny_btl.cv1.tiny_conv.bias = Tensor(m.cv3[0].m[j].cv1.conv.bias.detach().numpy().copy())
           tiny_btl.cv2 = tiny_Conv()
           tiny_btl.cv2.tiny_conv = tiny_nn.Conv2d(m.cv3[0].m[j].cv2.conv.in_channels, m.cv3[0].m[j].cv2.conv.out_channels, m.cv3[0].m[j].cv2.conv.kernel_size, m.cv3[0].m[j].cv2.conv.stride, m.cv3[0].m[j].cv2.conv.padding, m.cv3[0].m[j].cv2.conv.dilation, m.cv3[0].m[j].cv1.conv.groups, True if m.cv3[0].m[j].cv2.conv.bias is not None else False)
-          tiny_btl.cv2.tiny_conv.weight = tiny_Tensor(m.cv3[0].m[j].cv2.conv.weight.detach().numpy().copy())
-          tiny_btl.cv2.tiny_conv.bias = tiny_Tensor(m.cv3[0].m[j].cv2.conv.bias.detach().numpy().copy())
+          tiny_btl.cv2.tiny_conv.weight = Tensor(m.cv3[0].m[j].cv2.conv.weight.detach().numpy().copy())
+          tiny_btl.cv2.tiny_conv.bias = Tensor(m.cv3[0].m[j].cv2.conv.bias.detach().numpy().copy())
 
           tiny_btl.add = m.cv3[0].m[j].add
           tiny_seq_2.append(tiny_btl) # todo
@@ -647,15 +617,15 @@ class tiny_DetectionModel():
 
         tiny_seq_cv3 = tiny_Conv()
         tiny_seq_cv3.tiny_conv = tiny_nn.Conv2d(m.cv3[1].conv.in_channels, m.cv3[1].conv.out_channels, m.cv3[1].conv.kernel_size, m.cv3[1].conv.stride, m.cv3[1].conv.padding, m.cv3[1].conv.dilation, m.cv3[1].conv.groups, True if m.cv3[1].conv.bias is not None else False)
-        tiny_seq_cv3.tiny_conv.weight = tiny_Tensor(m.cv3[1].conv.weight.detach().numpy().copy())
-        tiny_seq_cv3.tiny_conv.bias = tiny_Tensor(m.cv3[1].conv.bias.detach().numpy().copy())
+        tiny_seq_cv3.tiny_conv.weight = Tensor(m.cv3[1].conv.weight.detach().numpy().copy())
+        tiny_seq_cv3.tiny_conv.bias = Tensor(m.cv3[1].conv.bias.detach().numpy().copy())
         tiny_seq.append(tiny_seq_cv3)
         tiny.cv3 = tiny_seq
 
         tiny_seq_cv4 = tiny_Conv()
         tiny_seq_cv4.tiny_conv = tiny_nn.Conv2d(m.cv4.conv.in_channels, m.cv4.conv.out_channels, m.cv4.conv.kernel_size, m.cv4.conv.stride, m.cv4.conv.padding, m.cv4.conv.dilation, m.cv4.conv.groups, True if m.cv4.conv.bias is not None else False)
-        tiny_seq_cv4.tiny_conv.weight = tiny_Tensor(m.cv4.conv.weight.detach().numpy().copy())
-        tiny_seq_cv4.tiny_conv.bias = tiny_Tensor(m.cv4.conv.bias.detach().numpy().copy())
+        tiny_seq_cv4.tiny_conv.weight = Tensor(m.cv4.conv.weight.detach().numpy().copy())
+        tiny_seq_cv4.tiny_conv.bias = Tensor(m.cv4.conv.bias.detach().numpy().copy())
         tiny.cv4 = tiny_seq_cv4
 
         self.model[i] = tiny
@@ -788,30 +758,30 @@ def check_img_size(imgsz, s=32, floor=0):
 def compute_iou_matrix(boxes):
   x1, y1, x2, y2 = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
   areas = (x2 - x1) * (y2 - y1)
-  x1 = tiny_Tensor.maximum(x1[:, None], x1[None, :])
-  y1 = tiny_Tensor.maximum(y1[:, None], y1[None, :])
-  x2 = tiny_Tensor.minimum(x2[:, None], x2[None, :])
-  y2 = tiny_Tensor.minimum(y2[:, None], y2[None, :])
-  w = tiny_Tensor.maximum(tiny_Tensor(0), x2 - x1)
-  h = tiny_Tensor.maximum(tiny_Tensor(0), y2 - y1)
+  x1 = Tensor.maximum(x1[:, None], x1[None, :])
+  y1 = Tensor.maximum(y1[:, None], y1[None, :])
+  x2 = Tensor.minimum(x2[:, None], x2[None, :])
+  y2 = Tensor.minimum(y2[:, None], y2[None, :])
+  w = Tensor.maximum(Tensor(0), x2 - x1)
+  h = Tensor.maximum(Tensor(0), y2 - y1)
   intersection = w * h
   union = areas[:, None] + areas[None, :] - intersection
   return intersection / union
 
 def postprocess(output, max_det=300, conf_threshold=0.25, iou_threshold=0.45):
   xc, yc, w, h, class_scores = output[0][0], output[0][1], output[0][2], output[0][3], output[0][4:]
-  class_ids = tiny_Tensor.argmax(class_scores, axis=0)
-  probs = tiny_Tensor.max(class_scores, axis=0)
-  probs = tiny_Tensor.where(probs >= conf_threshold, probs, 0)
+  class_ids = Tensor.argmax(class_scores, axis=0)
+  probs = Tensor.max(class_scores, axis=0)
+  probs = Tensor.where(probs >= conf_threshold, probs, 0)
   x1 = xc - w / 2
   y1 = yc - h / 2
   x2 = xc + w / 2
   y2 = yc + h / 2
-  boxes = tiny_Tensor.stack(x1, y1, x2, y2, probs, class_ids, dim=1)
-  order = tiny_Tensor.topk(probs, max_det)[1]
+  boxes = Tensor.stack(x1, y1, x2, y2, probs, class_ids, dim=1)
+  order = Tensor.topk(probs, max_det)[1]
   boxes = boxes[order]
   iou = compute_iou_matrix(boxes[:, :4])
-  iou = tiny_Tensor.triu(iou, diagonal=1)
+  iou = Tensor.triu(iou, diagonal=1)
   same_class_mask = boxes[:, -1][:, None] == boxes[:, -1][None, :]
   high_iou_mask = (iou > iou_threshold) & same_class_mask
   no_overlap_mask = high_iou_mask.sum(axis=0) == 0
@@ -1076,7 +1046,7 @@ if __name__ == "__main__":
 
     dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=1)
     for path, im, im0s, vid_cap, s in dataset:
-        im = tiny_Tensor(im)
+        im = Tensor(im)
         im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
         im /= 255  # 0 - 255 to 0.0 - 1.0
         if len(im.shape) == 3: im = im[None]  # expand for batch dim
@@ -1084,7 +1054,6 @@ if __name__ == "__main__":
         model.convert()
         pred = model(im)
         pred = pred[0]
-        pred = to_tiny(pred)
         pred = postprocess(pred)
         pred = pred.numpy()
         pred = pred[pred[:, 4] >= 0.25]
