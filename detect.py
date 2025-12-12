@@ -149,12 +149,10 @@ class tiny_SPPELAN():
         super().__init__()
 
     def __call__(self, x):
-        if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
         y = [self.cv1(x)]
         y.append(self.cv2(y[-1]))
         y.append(self.cv3(y[-1]))
         y.append(self.cv4(y[-1]))
-        for i in range(len(y)): y[i] = tiny_Tensor(y[i].detach().numpy())
         y = tiny_Tensor.cat(*y, dim=1)
         y = self.cv5(y)
         return y
