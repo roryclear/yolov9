@@ -190,8 +190,6 @@ class tiny_DDetect():
     dynamic = False  # force grid reconstruction
     export = False  # export mode
     shape = None
-    anchors = torch.empty(0)  # init
-    strides = torch.empty(0)  # init
 
     def __init__(self, nc=80, ch=(), inplace=True):  # detection layer
         super().__init__()
@@ -209,10 +207,20 @@ class tiny_DDetect():
             x = to_torch(x)
             self.anchors, self.strides = (x.transpose(0, 1) for x in make_anchors(x, self.stride, 0.5))
             self.shape = shape
-
-        box, cls = torch.cat([xi.view(shape[0], self.no, -1) for xi in x], 2).split((self.reg_max * 4, self.nc), 1)
+        
+        processed_tensors = []
+        for i in range(len(x)): x[i] = to_tiny(x[i])
+        for xi in x:
+          y = xi.view(shape[0], self.no, -1)
+          processed_tensors.append(y)
+        concatenated = tiny_Tensor.cat(*processed_tensors, dim=2)
+        box, cls = concatenated.split((self.reg_max * 4, self.nc), 1)
         dbox = dist2bbox(self.dfl(box), self.anchors.unsqueeze(0), xywh=True, dim=1) * self.strides
-        y = torch.cat((dbox, cls.sigmoid()), 1)
+        print(type(dbox))
+        dbox = to_tiny(dbox)
+        cls = to_tiny(cls)
+        y = tiny_Tensor.cat(dbox, tiny_Tensor.sigmoid(cls), dim=1)
+        y = to_torch(y)
         return y if self.export else (y, x)
 
 class tiny_CBLinear():
@@ -1081,49 +1089,6 @@ expected["e"] = [[118.6095,186.78137,479.75702,778.1138,0.9503603,0.0,],
 [295.18512,214.09583,377.89227,501.78497,0.2601459,0.0,],
 [130.26685,557.0753,379.346,768.1344,0.2538286,0.0,],]
 
-def run():
-    
-    for size in ["t", "s", "m", "c", "e"]:
-        weights = f'./yolov9-{size}-tiny.pt'
-        weights = f'./yolov9-{size}-converted.pt'
-
-        source = "data/images/football.webp"
-        imgsz = (1280,1280)
-        model = pickle.load(open(weights, 'rb'))
-
-        tiny_model = tiny_DetectionModel()
-        tiny_model.model = model.model
-        for key, value in vars(model).items(): setattr(tiny_model, key, value)
-        model = tiny_model
-
-        tiny_seq = tiny_Sequential()
-        for x in model.model: tiny_seq.append(x)
-        model.model = tiny_seq
-
-        model.device = "cpu"
-        model.fp16 = False
-        stride, pt = 32, True
-        imgsz = check_img_size(imgsz, s=stride)  # check image size
-
-        dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=1)
-        for path, im, im0s, vid_cap, s in dataset:
-          im = torch.from_numpy(im).to(model.device)
-          im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
-          im /= 255  # 0 - 255 to 0.0 - 1.0
-          if len(im.shape) == 3: im = im[None]  # expand for batch dim
-
-          model.convert()
-          #pickle.dump(model, open(f'yolov9-{size}-tiny.pt', 'wb'))
-
-          pred = model(im)
-          pred = non_max_suppression(pred, 0.25, 0.45, None, False, 1000)
-          pred = pred[0].detach().numpy()
-          np.testing.assert_allclose(pred, expected[size], atol=1e-4, rtol=1e-3)
-
-          class_labels = fetch('https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names').read_text().split("\n")
-          pred = rescale_bounding_boxes(pred)
-          draw_bounding_boxes_and_save(source, f"out_{size}.jpg", pred, class_labels)
-    print("passed")
 
 def rescale_bounding_boxes(predictions, from_size=(1280, 853), to_size=(3020, 1986)):
     from_w, from_h = from_size
@@ -1179,11 +1144,50 @@ def draw_bounding_boxes_and_save(orig_img_path, output_img_path, predictions, cl
   print(f'saved detections at {output_img_path}')
 
 
-def main():
-  run()
-
 if __name__ == "__main__":
-  main()
+  for size in ["t", "s", "m", "c", "e"]:
+    weights = f'./yolov9-{size}-tiny.pt'
+    weights = f'./yolov9-{size}-converted.pt'
+
+    source = "data/images/football.webp"
+    imgsz = (1280,1280)
+    model = pickle.load(open(weights, 'rb'))
+
+    tiny_model = tiny_DetectionModel()
+    tiny_model.model = model.model
+    for key, value in vars(model).items(): setattr(tiny_model, key, value)
+    model = tiny_model
+
+    tiny_seq = tiny_Sequential()
+    for x in model.model: tiny_seq.append(x)
+    model.model = tiny_seq
+
+    model.device = "cpu"
+    model.fp16 = False
+    stride, pt = 32, True
+    imgsz = check_img_size(imgsz, s=stride)  # check image size
+
+    dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=1)
+    for path, im, im0s, vid_cap, s in dataset:
+        im = torch.from_numpy(im).to(model.device)
+        im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
+        im /= 255  # 0 - 255 to 0.0 - 1.0
+        if len(im.shape) == 3: im = im[None]  # expand for batch dim
+
+        model.convert()
+        #pickle.dump(model, open(f'yolov9-{size}-tiny.pt', 'wb'))
+
+        pred = model(im)
+        pred = non_max_suppression(pred, 0.25, 0.45, None, False, 1000)
+        pred = pred[0].detach().numpy()
+        np.testing.assert_allclose(pred, expected[size], atol=1e-4, rtol=1e-3)
+
+        class_labels = fetch('https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names').read_text().split("\n")
+        pred = rescale_bounding_boxes(pred)
+        draw_bounding_boxes_and_save(source, f"out_{size}.jpg", pred, class_labels)
+  print("passed")
+
+
 
 
 
