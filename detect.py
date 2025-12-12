@@ -216,7 +216,6 @@ class tiny_DDetect():
         concatenated = tiny_Tensor.cat(*processed_tensors, dim=2)
         box, cls = concatenated.split((self.reg_max * 4, self.nc), 1)
         dbox = dist2bbox(self.dfl(box), self.anchors.unsqueeze(0), xywh=True, dim=1) * self.strides
-        print(type(dbox))
         dbox = to_tiny(dbox)
         cls = to_tiny(cls)
         y = tiny_Tensor.cat(dbox, tiny_Tensor.sigmoid(cls), dim=1)
@@ -810,103 +809,39 @@ def check_img_size(imgsz, s=32, floor=0):
         new_size = [max(make_divisible(x, int(s)), floor) for x in imgsz]
     return new_size
 
-def xywh2xyxy(x):
-    # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
-    y = x.clone() if isinstance(x, torch.Tensor) else np.copy(x)
-    y[..., 0] = x[..., 0] - x[..., 2] / 2  # top left x
-    y[..., 1] = x[..., 1] - x[..., 3] / 2  # top left y
-    y[..., 2] = x[..., 0] + x[..., 2] / 2  # bottom right x
-    y[..., 3] = x[..., 1] + x[..., 3] / 2  # bottom right y
-    return y
+def compute_iou_matrix(boxes):
+  x1, y1, x2, y2 = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
+  areas = (x2 - x1) * (y2 - y1)
+  x1 = tiny_Tensor.maximum(x1[:, None], x1[None, :])
+  y1 = tiny_Tensor.maximum(y1[:, None], y1[None, :])
+  x2 = tiny_Tensor.minimum(x2[:, None], x2[None, :])
+  y2 = tiny_Tensor.minimum(y2[:, None], y2[None, :])
+  w = tiny_Tensor.maximum(tiny_Tensor(0), x2 - x1)
+  h = tiny_Tensor.maximum(tiny_Tensor(0), y2 - y1)
+  intersection = w * h
+  union = areas[:, None] + areas[None, :] - intersection
+  return intersection / union
 
-def non_max_suppression(
-        prediction,
-        conf_thres=0.25,
-        iou_thres=0.45,
-        classes=None,
-        agnostic=False,
-        multi_label=False,
-        labels=(),
-        max_det=300,
-        nm=0,  # number of masks
-):
-    """Non-Maximum Suppression (NMS) on inference results to reject overlapping detections
+def postprocess(output, max_det=300, conf_threshold=0.25, iou_threshold=0.45):
+  xc, yc, w, h, class_scores = output[0][0], output[0][1], output[0][2], output[0][3], output[0][4:]
+  class_ids = tiny_Tensor.argmax(class_scores, axis=0)
+  probs = tiny_Tensor.max(class_scores, axis=0)
+  probs = tiny_Tensor.where(probs >= conf_threshold, probs, 0)
+  x1 = xc - w / 2
+  y1 = yc - h / 2
+  x2 = xc + w / 2
+  y2 = yc + h / 2
+  boxes = tiny_Tensor.stack(x1, y1, x2, y2, probs, class_ids, dim=1)
+  order = tiny_Tensor.topk(probs, max_det)[1]
+  boxes = boxes[order]
+  iou = compute_iou_matrix(boxes[:, :4])
+  iou = tiny_Tensor.triu(iou, diagonal=1)
+  same_class_mask = boxes[:, -1][:, None] == boxes[:, -1][None, :]
+  high_iou_mask = (iou > iou_threshold) & same_class_mask
+  no_overlap_mask = high_iou_mask.sum(axis=0) == 0
+  boxes = boxes * no_overlap_mask.unsqueeze(-1)
+  return boxes
 
-    Returns:
-         list of detections, on (n,6) tensor per image [xyxy, conf, cls]
-    """
-
-    if isinstance(prediction, (list, tuple)):  # YOLO model in validation model, output = (inference_out, loss_out)
-        prediction = prediction[0]  # select only inference output
-
-
-    bs = prediction.shape[0]  # batch size
-    nc = prediction.shape[1] - nm - 4  # number of classes
-    mi = 4 + nc  # mask start index
-    xc = prediction[:, 4:mi].amax(1) > conf_thres  # candidates
-
-    # Checks
-    assert 0 <= conf_thres <= 1, f'Invalid Confidence threshold {conf_thres}, valid values are between 0.0 and 1.0'
-    assert 0 <= iou_thres <= 1, f'Invalid IoU {iou_thres}, valid values are between 0.0 and 1.0'
-
-    # Settings
-    # min_wh = 2  # (pixels) minimum box width and height
-    max_wh = 7680  # (pixels) maximum box width and height
-    max_nms = 30000  # maximum number of boxes into torchvision.ops.nms()
-    multi_label &= nc > 1  # multiple labels per box (adds 0.5ms/img)
-
-    t = time.time()
-    output = [torch.zeros((0, 6 + nm), device=prediction.device)] * bs
-    for xi, x in enumerate(prediction):  # image index, image inference
-        # Apply constraints
-        # x[((x[:, 2:4] < min_wh) | (x[:, 2:4] > max_wh)).any(1), 4] = 0  # width-height
-        x = x.T[xc[xi]]  # confidence
-
-        # Cat apriori labels if autolabelling
-        if labels and len(labels[xi]):
-            lb = labels[xi]
-            v = torch.zeros((len(lb), nc + nm + 5), device=x.device)
-            v[:, :4] = lb[:, 1:5]  # box
-            v[range(len(lb)), lb[:, 0].long() + 4] = 1.0  # cls
-            x = torch.cat((x, v), 0)
-
-        # If none remain process next image
-        if not x.shape[0]:
-            continue
-
-        # Detections matrix nx6 (xyxy, conf, cls)
-        box, cls, mask = x.split((4, nc, nm), 1)
-        box = xywh2xyxy(box)  # center_x, center_y, width, height) to (x1, y1, x2, y2)
-        if multi_label:
-            i, j = (cls > conf_thres).nonzero(as_tuple=False).T
-            x = torch.cat((box[i], x[i, 4 + j, None], j[:, None].float(), mask[i]), 1)
-        else:  # best class only
-            conf, j = cls.max(1, keepdim=True)
-            x = torch.cat((box, conf, j.float(), mask), 1)[conf.view(-1) > conf_thres]
-
-        # Filter by class
-        if classes is not None:
-            x = x[(x[:, 5:6] == torch.tensor(classes, device=x.device)).any(1)]
-
-        n = x.shape[0]  # number of boxes
-        if not n:  # no boxes
-            continue
-        elif n > max_nms:  # excess boxes
-            x = x[x[:, 4].argsort(descending=True)[:max_nms]]  # sort by confidence
-        else:
-            x = x[x[:, 4].argsort(descending=True)]  # sort by confidence
-
-        # Batched NMS
-        c = x[:, 5:6] * (0 if agnostic else max_wh)  # classes
-        boxes, scores = x[:, :4] + c, x[:, 4]  # boxes (offset by class), scores
-        i = torchvision.ops.nms(boxes, scores, iou_thres)  # NMS
-        if i.shape[0] > max_det:  # limit detections
-            i = i[:max_det]
-
-        output[xi] = x[i]
-
-
-    return output
 
 def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
     # Resize and pad image while meeting stride-multiple constraints
@@ -1171,13 +1106,13 @@ if __name__ == "__main__":
         if len(im.shape) == 3: im = im[None]  # expand for batch dim
 
         model.convert()
-        #pickle.dump(model, open(f'yolov9-{size}-tiny.pt', 'wb'))
-
         pred = model(im)
-        pred = non_max_suppression(pred, 0.25, 0.45, None, False, 1000)
-        pred = pred[0].detach().numpy()
+        pred = pred[0]
+        pred = to_tiny(pred)
+        pred = postprocess(pred)
+        pred = pred.numpy()
+        pred = pred[pred[:, 4] >= 0.25]
         np.testing.assert_allclose(pred, expected[size], atol=1e-4, rtol=1e-3)
-
         class_labels = fetch('https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names').read_text().split("\n")
         pred = rescale_bounding_boxes(pred)
         draw_bounding_boxes_and_save(source, f"out_{size}.jpg", pred, class_labels)
