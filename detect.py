@@ -99,13 +99,6 @@ def to_tiny(x):
     x = tiny_Tensor(x.detach().numpy())
   return x
   
-def to_torch(x):
-  if type(x) != Tensor:
-    if type(x) == tiny_Tensor: x = Tensor(x.numpy())
-    if type(x) == list:
-      for i in range(len(x)): x[i] = to_torch(x[i])
-  return x
-
 class tiny_RepNCSP():
     # CSP Bottleneck with 3 convolutions
     def __init__(self):  # ch_in, ch_out, number, shortcut, groups, expansion
@@ -214,8 +207,7 @@ class tiny_DDetect():
         dbox = to_tiny(dbox)
         dbox = dist2bbox(dbox, self.anchors.unsqueeze(0), xywh=True, dim=1) * self.strides
         y = tiny_Tensor.cat(dbox, tiny_Tensor.sigmoid(cls), dim=1)
-        y = to_torch(y)
-        return y if self.export else (y, x)
+        return (y, x)
 
 class tiny_CBLinear():
     def __init__(self):  # ch_in, ch_outs, kernel, stride, padding, groups
@@ -699,7 +691,6 @@ class tiny_DetectionModel():
     y = []  # outputs
     for i in range(len(self.model)):
       m = self.model[i]
-      print("rory m =",type(m))
       if m.f != -1:
         x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]
       x = m(x)
