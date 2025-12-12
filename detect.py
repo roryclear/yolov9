@@ -141,10 +141,7 @@ class tiny_SP():
         self.k = k
         self.s = s
 
-    def __call__(self, x):
-        x = tiny_Tensor(x.detach().numpy())
-        x = tiny_Tensor.max_pool2d(x, self.k, self.s, dilation=1, padding=self.k//2)
-        return Tensor(x.numpy())
+    def __call__(self, x): return tiny_Tensor.max_pool2d(x, self.k, self.s, dilation=1, padding=self.k//2)
 
 class tiny_SPPELAN():
     # spp-elan
