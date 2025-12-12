@@ -74,8 +74,7 @@ class tiny_RepNBottleneck():
     def __init__(self):  # ch_in, ch_out, shortcut, kernels, groups, expand
         super().__init__()
 
-    def __call__(self, x):
-        return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+    def __call__(self, x): return x + self.cv2(self.cv1(x))
 
   
 class tiny_RepNCSP():
@@ -182,16 +181,12 @@ class tiny_CBFuse():
         super(tiny_CBFuse, self).__init__()
 
     def __call__(self, xs):
-        for i in range(len(xs)):
-          if type(xs[i]) == tuple:
-            xs[i] = list(xs[i])
-            xs[i] = tuple(xs[i])
         target_size = xs[-1].shape[2:]
         res = []
         for i, x in enumerate(xs[:-1]):
-            tensor_to_upsample = x[self.idx[i]]
-            upsampled = Tensor.interpolate(tensor_to_upsample, size=target_size, mode='nearest')
-            res.append(upsampled)
+          tensor_to_upsample = x[self.idx[i]]
+          upsampled = Tensor.interpolate(tensor_to_upsample, size=target_size, mode='nearest')
+          res.append(upsampled)
         
         res += xs[-1:]
 
@@ -723,27 +718,6 @@ class LoadImages:
 
         return path, im, im0, self.cap, s
 
-    def _new_video(self, path):
-        # Create a new video capture object
-        self.frame = 0
-        self.cap = cv2.VideoCapture(path)
-        self.frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT) / self.vid_stride)
-        self.orientation = int(self.cap.get(cv2.CAP_PROP_ORIENTATION_META))  # rotation degrees
-        # self.cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 0)  # disable https://github.com/ultralytics/yolov5/issues/8493
-
-
-
-def make_divisible(x, divisor): return math.ceil(x / divisor) * divisor
-
-def check_img_size(imgsz, s=32, floor=0):
-    # Verify image size is a multiple of stride s in each dimension
-    if isinstance(imgsz, int):  # integer i.e. img_size=640
-        new_size = max(make_divisible(imgsz, int(s)), floor)
-    else:  # list i.e. img_size=[640, 480]
-        imgsz = list(imgsz)  # convert to list if tuple
-        new_size = [max(make_divisible(x, int(s)), floor) for x in imgsz]
-    return new_size
-
 def compute_iou_matrix(boxes):
   x1, y1, x2, y2 = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
   areas = (x2 - x1) * (y2 - y1)
@@ -1031,7 +1005,6 @@ if __name__ == "__main__":
     model.device = "cpu"
     model.fp16 = False
     stride, pt = 32, True
-    imgsz = check_img_size(imgsz, s=stride)  # check image size
 
     dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=1)
     for path, im, im0s, vid_cap, s in dataset:
@@ -1051,6 +1024,7 @@ if __name__ == "__main__":
         pred = rescale_bounding_boxes(pred)
         draw_bounding_boxes_and_save(source, f"out_{size}.jpg", pred, class_labels)
   print("passed")
+
 
 
 
