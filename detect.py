@@ -1,14 +1,10 @@
 import os
 import sys
 from pathlib import Path
-import math
-import glob
 import cv2
 import pickle
 from tinygrad import nn as tiny_nn, Tensor
 from tinygrad.helpers import fetch
-
-from other import Conv, ADown, AConv, ELAN1, RepNBottleneck, RepNCSP, RepConvN, RepNCSPELAN4, SP, SPPELAN, Concat, DDetect, DFL, CBLinear, CBFuse, DetectionModel
 
 TORCH_1_10 = False
 FILE = Path(__file__).resolve()
@@ -901,42 +897,63 @@ def draw_bounding_boxes_and_save(orig_img_path, output_img_path, predictions, cl
   cv2.imwrite(output_img_path, orig_img)
   print(f'saved detections at {output_img_path}')
 
+def clean_model_object(model): # vibe clean pkl works
+    pytorch_junk = {
+        '_parameters', '_buffers', '_non_persistent_buffers_set',
+        '_backward_pre_hooks', '_backward_hooks', '_is_full_backward_hook',
+        '_forward_hooks', '_forward_hooks_with_kwargs', '_forward_hooks_always_called',
+        '_forward_pre_hooks', '_forward_pre_hooks_with_kwargs',
+        '_state_dict_hooks', '_state_dict_pre_hooks',
+        '_load_state_dict_pre_hooks', '_load_state_dict_post_hooks',
+        '_modules', 'training'
+    }
+    for attr in pytorch_junk:
+        if hasattr(model, attr):
+            try:
+                delattr(model, attr)
+            except:
+                pass
+    
+    def clean_submodules(obj):
+        if hasattr(obj, '__dict__'):
+            for attr in list(obj.__dict__.keys()):
+                if attr in pytorch_junk:
+                    try:
+                        delattr(obj, attr)
+                    except:
+                        pass
+            for key, value in obj.__dict__.items():
+                if hasattr(value, '__dict__'):
+                    clean_submodules(value)
+                elif isinstance(value, (list, tuple)):
+                    for item in value:
+                        if hasattr(item, '__dict__'):
+                            clean_submodules(item)
+                elif isinstance(value, dict):
+                    for item in value.values():
+                        if hasattr(item, '__dict__'):
+                            clean_submodules(item)
+    clean_submodules(model)
+    
+    return model
 
 if __name__ == "__main__":
   for size in ["t", "s", "m", "c", "e"]:
     weights = f'./yolov9-{size}-tiny.pt'
-    weights = f'./yolov9-{size}-converted.pt'
-
     source = "data/images/football.webp"
     imgsz = (1280,1280)
     model = pickle.load(open(weights, 'rb'))
-
-    tiny_model = tiny_DetectionModel()
-    tiny_model.model = model.model
-    for key, value in vars(model).items(): setattr(tiny_model, key, value)
-    model = tiny_model
-
-    tiny_seq = tiny_Sequential()
-    for x in model.model: tiny_seq.append(x)
-    model.model = tiny_seq
-
-    model.device = "cpu"
-    model.fp16 = False
-    stride, pt = 32, True
-
 
     path = "data/images/football.webp"
     im0 = cv2.imread(path)  # BGR
     im = letterbox(im0, new_shape=(1280, 1280), stride=32, auto=True)[0]  # padded resize
     im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
     im = np.ascontiguousarray(im)  # contiguous
-
     im = Tensor(im)
     im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
     im /= 255  # 0 - 255 to 0.0 - 1.0
     if len(im.shape) == 3: im = im[None]  # expand for batch dim
 
-    model.convert()
     pred = model(im)
     pred = pred[0]
     pred = postprocess(pred)
