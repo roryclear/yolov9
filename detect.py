@@ -799,11 +799,7 @@ class LoadImages:
 
 
 
-def make_divisible(x, divisor):
-    # Returns nearest x divisible by divisor
-    if isinstance(divisor, torch.Tensor):
-        divisor = int(divisor.max())  # to int
-    return math.ceil(x / divisor) * divisor
+def make_divisible(x, divisor): return math.ceil(x / divisor) * divisor
 
 def check_img_size(imgsz, s=32, floor=0):
     # Verify image size is a multiple of stride s in each dimension
