@@ -4,7 +4,6 @@ from pathlib import Path
 import math
 import glob
 import cv2
-import torch.nn as nn
 import pickle
 from tinygrad import nn as tiny_nn, Tensor
 from tinygrad.helpers import fetch
@@ -614,7 +613,7 @@ class tiny_DetectionModel():
 
         self.model[i] = tiny
         m = tiny
-      elif type(m) == nn.Upsample:
+      elif type(m).__name__ == "Upsample":
         tiny = tiny_Upsample()
         tiny.f = m.f
         tiny._backward_hooks = m._backward_hooks
