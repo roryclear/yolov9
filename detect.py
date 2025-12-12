@@ -43,12 +43,7 @@ class tiny_Conv():
     def __init__(self):
         super().__init__()
         return
-    def __call__(self, x):
-      tiny_x = x
-      if type(tiny_x) != tiny_Tensor: tiny_x = tiny_Tensor(tiny_x.detach().numpy())
-      tiny_x = self.tiny_conv(tiny_x)
-      tiny_x = tiny_x.silu()
-      return Tensor(tiny_x.numpy())
+    def __call__(self, x): return self.tiny_conv(x).silu()
 
 class tiny_ADown():
     def __init__(self, c1=1, c2=1): super().__init__()
@@ -259,7 +254,7 @@ class tiny_CBFuse():
 
         y = tiny_Tensor.stack(*res)
         out = y.sum(0)
-        return Tensor(out.numpy())
+        return out
 
   #def interpolate(self, size:tuple[int, ...], mode:str="linear", align_corners:bool=False) -> Tensor:
 
@@ -704,6 +699,7 @@ class tiny_DetectionModel():
     y = []  # outputs
     for i in range(len(self.model)):
       m = self.model[i]
+      print("rory m =",type(m))
       if m.f != -1:
         x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]
       x = m(x)
@@ -1103,7 +1099,7 @@ if __name__ == "__main__":
 
     dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=1)
     for path, im, im0s, vid_cap, s in dataset:
-        im = torch.from_numpy(im).to(model.device)
+        im = tiny_Tensor(im)
         im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
         im /= 255  # 0 - 255 to 0.0 - 1.0
         if len(im.shape) == 3: im = im[None]  # expand for batch dim
@@ -1120,6 +1116,7 @@ if __name__ == "__main__":
         pred = rescale_bounding_boxes(pred)
         draw_bounding_boxes_and_save(source, f"out_{size}.jpg", pred, class_labels)
   print("passed")
+
 
 
 
