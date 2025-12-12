@@ -25,9 +25,7 @@ class tiny_Sequential():
     def __init__(self): self.list = []
     def append(self,x): self.list.append(x)
     def __call__(self, x):
-      for i in range(len(self.list)):
-        if type(self.list[i]) == tiny_nn.Conv2d: x = Tensor(x.detach().numpy())
-        x = self.list[i](x)
+      for i in range(len(self.list)): x = self.list[i](x)
       return x
     def __len__(self): return len(self.list)
     def __setitem__(self, key, value): self.list[key] = value
@@ -46,10 +44,8 @@ class tiny_ADown():
       x = Tensor.avg_pool2d(x, 2, 1, 1, 0, False, True)
       x1,x2 = x.chunk(2, 1)
       x1 = self.cv1(x1)
-      x1 = Tensor(x1.detach().numpy())
       x2 = Tensor.max_pool2d(x2, kernel_size=3, stride=2, dilation=1, padding=1)
       x2 = self.cv2(x2)
-      x2 = Tensor(x2.detach().numpy())
       return Tensor.cat(x1, x2, dim=1)
 
 class tiny_AConv():
@@ -57,7 +53,6 @@ class tiny_AConv():
         super().__init__()
 
     def __call__(self, x):
-        x = Tensor(x.detach().numpy())
         x = Tensor.avg_pool2d(x, kernel_size=2, stride=1, padding=0, ceil_mode=False, count_include_pad=True)
         return self.cv1(x)
 
@@ -67,15 +62,11 @@ class tiny_ELAN1():
 
     def __call__(self, x):
       y = self.cv1(x)
-      y = Tensor(y.detach().numpy())
       y = y.chunk(2,1)
       y = list(y)
       y.extend(m(y[-1]) for m in [self.cv2, self.cv3])
-      y[-1] = Tensor(y[-1].detach().numpy())
-      y[-2] = Tensor(y[-2].detach().numpy())
       y = Tensor.cat(y[0], y[1], y[2], y[3], dim=1)
       y = self.cv4(y)
-      #y = Tensor(y.numpy())
       return y
     
 class tiny_RepNBottleneck():
@@ -195,13 +186,11 @@ class tiny_CBFuse():
           if type(xs[i]) == tuple:
             xs[i] = list(xs[i])
             xs[i] = tuple(xs[i])
-          else:
-            xs[i] = Tensor(xs[i].detach().numpy())
         target_size = xs[-1].shape[2:]
         res = []
         for i, x in enumerate(xs[:-1]):
             tensor_to_upsample = x[self.idx[i]]
-            upsampled = Tensor.interpolate(Tensor(tensor_to_upsample.detach().numpy()), size=target_size, mode='nearest')
+            upsampled = Tensor.interpolate(tensor_to_upsample, size=target_size, mode='nearest')
             res.append(upsampled)
         
         res += xs[-1:]
