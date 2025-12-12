@@ -679,42 +679,15 @@ class LoadImages:
         return self
 
     def __next__(self):
-        if self.count == self.nf:
-            raise StopIteration
-        path = self.files[self.count]
+        # Read image
+        self.count += 1
+        path = "data/images/football.webp"
+        im0 = cv2.imread(path)  # BGR
+        s = f'image {self.count}/{self.nf} {path}: '
 
-        if self.video_flag[self.count]:
-            # Read video
-            self.mode = 'video'
-            for _ in range(self.vid_stride):
-                self.cap.grab()
-            ret_val, im0 = self.cap.retrieve()
-            while not ret_val:
-                self.count += 1
-                self.cap.release()
-                if self.count == self.nf:  # last video
-                    raise StopIteration
-                path = self.files[self.count]
-                self._new_video(path)
-                ret_val, im0 = self.cap.read()
-
-            self.frame += 1
-            # im0 = self._cv2_rotate(im0)  # for use if cv2 autorotation is False
-            s = f'video {self.count + 1}/{self.nf} ({self.frame}/{self.frames}) {path}: '
-
-        else:
-            # Read image
-            self.count += 1
-            im0 = cv2.imread(path)  # BGR
-            assert im0 is not None, f'Image Not Found {path}'
-            s = f'image {self.count}/{self.nf} {path}: '
-
-        if self.transforms:
-            im = self.transforms(im0)  # transforms
-        else:
-            im = letterbox(im0, self.img_size, stride=self.stride, auto=self.auto)[0]  # padded resize
-            im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
-            im = np.ascontiguousarray(im)  # contiguous
+        im = letterbox(im0, self.img_size, stride=self.stride, auto=self.auto)[0]  # padded resize
+        im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        im = np.ascontiguousarray(im)  # contiguous
 
         return path, im, im0, self.cap, s
 
@@ -1023,6 +996,7 @@ if __name__ == "__main__":
         class_labels = fetch('https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names').read_text().split("\n")
         pred = rescale_bounding_boxes(pred)
         draw_bounding_boxes_and_save(source, f"out_{size}.jpg", pred, class_labels)
+        break
   print("passed")
 
 
