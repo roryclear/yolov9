@@ -204,8 +204,10 @@ class tiny_DDetect():
             x0, x1 = to_tiny(x0), to_tiny(x1)
             x[i] = tiny_Tensor.cat(x0, x1, dim=1)
         if self.dynamic or self.shape != shape:
-            x = to_torch(x)
-            self.anchors, self.strides = (x.transpose(0, 1) for x in make_anchors(x, self.stride, 0.5))
+            int_stride = self.stride.int().tolist() # todo remove
+            self.anchors, self.strides = (x.transpose(0, 1) for x in make_anchors(x, int_stride, 0.5))
+            self.anchors = to_torch(self.anchors)
+            self.strides = to_torch(self.strides)
             self.shape = shape
         
         processed_tensors = []
@@ -264,18 +266,22 @@ class tiny_CBFuse():
   #def interpolate(self, size:tuple[int, ...], mode:str="linear", align_corners:bool=False) -> Tensor:
 
 def make_anchors(feats, strides, grid_cell_offset=0.5):
-    """Generate anchors from features."""
-    anchor_points, stride_tensor = [], []
-    assert feats is not None
-    dtype, device = feats[0].dtype, feats[0].device
-    for i, stride in enumerate(strides):
-        _, _, h, w = feats[i].shape
-        sx = torch.arange(end=w, device=device, dtype=dtype) + grid_cell_offset  # shift x
-        sy = torch.arange(end=h, device=device, dtype=dtype) + grid_cell_offset  # shift y
-        sy, sx = torch.meshgrid(sy, sx, indexing='ij') if TORCH_1_10 else torch.meshgrid(sy, sx)
-        anchor_points.append(torch.stack((sx, sy), -1).view(-1, 2))
-        stride_tensor.append(torch.full((h * w, 1), stride, dtype=dtype, device=device))
-    return torch.cat(anchor_points), torch.cat(stride_tensor)
+  anchor_points, stride_tensor = [], []
+  assert feats is not None
+  for i, stride in enumerate(strides):
+    _, _, h, w = feats[i].shape
+    sx = tiny_Tensor.arange(w) + grid_cell_offset
+    sy = tiny_Tensor.arange(h) + grid_cell_offset
+
+    # this is np.meshgrid but in tinygrad
+    sx = sx.reshape(1, -1).repeat([h, 1]).reshape(-1)
+    sy = sy.reshape(-1, 1).repeat([1, w]).reshape(-1)
+
+    anchor_points.append(tiny_Tensor.stack(sx, sy, dim=-1).reshape(-1, 2))
+    stride_tensor.append(tiny_Tensor.full((h * w), stride))
+  anchor_points = anchor_points[0].cat(anchor_points[1], anchor_points[2])
+  stride_tensor = stride_tensor[0].cat(stride_tensor[1], stride_tensor[2]).unsqueeze(1)
+  return anchor_points, stride_tensor
 
 def dist2bbox(distance, anchor_points, xywh=True, dim=-1):
     """Transform distance(ltrb) to box(xywh or xyxy)."""
