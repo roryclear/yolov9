@@ -56,8 +56,7 @@ class tiny_ADown():
       x2 = tiny_Tensor.max_pool2d(x2, kernel_size=3, stride=2, dilation=1, padding=1)
       x2 = self.cv2(x2)
       x2 = tiny_Tensor(x2.detach().numpy())
-      x = tiny_Tensor.cat(x1, x2, dim=1)
-      return Tensor(x.numpy())
+      return tiny_Tensor.cat(x1, x2, dim=1)
 
 class tiny_AConv():
     def __init__(self):  # ch_in, ch_out, shortcut, kernels, groups, expand
@@ -162,11 +161,7 @@ class tiny_Concat():
     def __init__(self, dimension=1):
         super().__init__()
 
-    def __call__(self, x):
-      if type(x[0]) != tiny_Tensor: x[0] = tiny_Tensor(x[0].detach().numpy())
-      if type(x[1]) != tiny_Tensor: x[1] = tiny_Tensor(x[1].detach().numpy())
-      y = tiny_Tensor.cat(x[0],x[1],dim=self.d)
-      return Tensor(y.numpy())
+    def __call__(self, x): return tiny_Tensor.cat(x[0],x[1],dim=self.d)
 
 class tiny_DDetect():
     # YOLO Detect head for detection models
@@ -295,8 +290,7 @@ class tiny_Upsample(): # nearest for now
     if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
     N, C, H, W = x.shape
     s = self.scale_factor
-    x = x.repeat_interleave(s, dim=2).repeat_interleave(s, dim=3)
-    return Tensor(x.numpy())
+    return x.repeat_interleave(s, dim=2).repeat_interleave(s, dim=3)
 
 class Silence():
     def __init__(self):
