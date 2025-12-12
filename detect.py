@@ -274,11 +274,9 @@ class tiny_DFL():
         # self.bn = nn.BatchNorm2d(4)
 
     def __call__(self, x):
-        if type(x) != tiny_Tensor: x = tiny_Tensor(x.detach().numpy())
         b, _, a = x.shape  # batch, channels, anchors
         x = x.view(b, 4, self.c1, a)
-        x = self.conv(x.transpose(2, 1).softmax(1)).view(b, 4, a)
-        return Tensor(x.numpy())
+        return self.conv(x.transpose(2, 1).softmax(1)).view(b, 4, a)
 
 
 class tiny_Upsample(): # nearest for now
