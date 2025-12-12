@@ -637,60 +637,6 @@ class tiny_DetectionModel():
       y.append(x)
     return x
 
-IMG_FORMATS = 'bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm'  # include image suffixes
-VID_FORMATS = 'asf', 'avi', 'gif', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 'ts', 'wmv'  # include video suffixes
-class LoadImages:
-    # YOLOv5 image/video dataloader, i.e. `python detect.py --source image.jpg/vid.mp4`
-    def __init__(self, path, img_size=640, stride=32, auto=True, transforms=None, vid_stride=1):
-        files = []
-        for p in sorted(path) if isinstance(path, (list, tuple)) else [path]:
-            p = str(Path(p).resolve())
-            if '*' in p:
-                files.extend(sorted(glob.glob(p, recursive=True)))  # glob
-            elif os.path.isdir(p):
-                files.extend(sorted(glob.glob(os.path.join(p, '*.*'))))  # dir
-            elif os.path.isfile(p):
-                files.append(p)  # files
-            else:
-                raise FileNotFoundError(f'{p} does not exist')
-
-        images = [x for x in files if x.split('.')[-1].lower() in IMG_FORMATS]
-        videos = [x for x in files if x.split('.')[-1].lower() in VID_FORMATS]
-        ni, nv = len(images), len(videos)
-
-        self.img_size = img_size
-        self.stride = stride
-        self.files = images + videos
-        self.nf = ni + nv  # number of files
-        self.video_flag = [False] * ni + [True] * nv
-        self.mode = 'image'
-        self.auto = auto
-        self.transforms = transforms  # optional
-        self.vid_stride = vid_stride  # video frame-rate stride
-        if any(videos):
-            self._new_video(videos[0])  # new video
-        else:
-            self.cap = None
-        assert self.nf > 0, f'No images or videos found in {p}. ' \
-                            f'Supported formats are:\nimages: {IMG_FORMATS}\nvideos: {VID_FORMATS}'
-
-    def __iter__(self):
-        self.count = 0
-        return self
-
-    def __next__(self):
-        # Read image
-        self.count += 1
-        path = "data/images/football.webp"
-        im0 = cv2.imread(path)  # BGR
-        s = f'image {self.count}/{self.nf} {path}: '
-
-        im = letterbox(im0, self.img_size, stride=self.stride, auto=self.auto)[0]  # padded resize
-        im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
-        im = np.ascontiguousarray(im)  # contiguous
-
-        return path, im, im0, self.cap, s
-
 def compute_iou_matrix(boxes):
   x1, y1, x2, y2 = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
   areas = (x2 - x1) * (y2 - y1)
@@ -979,24 +925,28 @@ if __name__ == "__main__":
     model.fp16 = False
     stride, pt = 32, True
 
-    dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=1)
-    for path, im, im0s, vid_cap, s in dataset:
-        im = Tensor(im)
-        im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
-        im /= 255  # 0 - 255 to 0.0 - 1.0
-        if len(im.shape) == 3: im = im[None]  # expand for batch dim
 
-        model.convert()
-        pred = model(im)
-        pred = pred[0]
-        pred = postprocess(pred)
-        pred = pred.numpy()
-        pred = pred[pred[:, 4] >= 0.25]
-        np.testing.assert_allclose(pred, expected[size], atol=1e-4, rtol=1e-3)
-        class_labels = fetch('https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names').read_text().split("\n")
-        pred = rescale_bounding_boxes(pred)
-        draw_bounding_boxes_and_save(source, f"out_{size}.jpg", pred, class_labels)
-        break
+    path = "data/images/football.webp"
+    im0 = cv2.imread(path)  # BGR
+    im = letterbox(im0, new_shape=(1280, 1280), stride=32, auto=True)[0]  # padded resize
+    im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+    im = np.ascontiguousarray(im)  # contiguous
+
+    im = Tensor(im)
+    im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
+    im /= 255  # 0 - 255 to 0.0 - 1.0
+    if len(im.shape) == 3: im = im[None]  # expand for batch dim
+
+    model.convert()
+    pred = model(im)
+    pred = pred[0]
+    pred = postprocess(pred)
+    pred = pred.numpy()
+    pred = pred[pred[:, 4] >= 0.25]
+    np.testing.assert_allclose(pred, expected[size], atol=1e-4, rtol=1e-3)
+    class_labels = fetch('https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names').read_text().split("\n")
+    pred = rescale_bounding_boxes(pred)
+    draw_bounding_boxes_and_save(source, f"out_{size}.jpg", pred, class_labels)
   print("passed")
 
 
