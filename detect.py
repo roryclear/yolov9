@@ -32,7 +32,6 @@ class tiny_Sequential():
       for i in range(len(self.list)):
         if type(self.list[i]) == tiny_nn.Conv2d: x = tiny_Tensor(x.detach().numpy())
         x = self.list[i](x)
-        if type(self.list[i]) == tiny_nn.Conv2d: x = Tensor(x.numpy())
       return x
     def __len__(self): return len(self.list)
     def __setitem__(self, key, value): self.list[key] = value
