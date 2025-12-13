@@ -5,6 +5,7 @@ import cv2
 import pickle
 from tinygrad import Tensor
 from tinygrad.helpers import fetch
+from tinygrad.dtype import dtypes
 
 TORCH_1_10 = False
 FILE = Path(__file__).resolve()
@@ -564,17 +565,16 @@ if __name__ == "__main__":
     source = "data/images/football.webp"
     imgsz = (1280,1280)
     model = pickle.load(open(weights, 'rb'))
-
     
     path = "data/images/football.webp"
     im0 = cv2.imread(path)  # BGR
     im = letterbox(im0, new_shape=(1280, 1280), stride=32, auto=True)[0]  # padded resize
     im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
     im = np.ascontiguousarray(im)  # contiguous
-    im = Tensor(im)
-    im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
-    im /= 255  # 0 - 255 to 0.0 - 1.0
+    im = Tensor(im).cast(dtypes.float32)
+    im /= 255
     if len(im.shape) == 3: im = im[None]  # expand for batch dim
+    
 
     pred = model(im)
     pred = pred[0]
