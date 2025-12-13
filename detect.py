@@ -30,7 +30,7 @@ class Conv():
     def __init__(self):
         super().__init__()
         return
-    def __call__(self, x): return self.tiny_conv(x).silu()
+    def __call__(self, x): return self.conv(x).silu()
 
 class ADown():
     def __init__(self, c1=1, c2=1): super().__init__()
