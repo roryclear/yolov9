@@ -562,7 +562,7 @@ def clean_model_object(model): # vibe clean pkl works
 
 if __name__ == "__main__":
   for size in ["t", "s", "m", "c", "e"]:
-    weights = f'./yolov9-{size}-tiny.pt'
+    weights = f'./yolov9-{size}-tiny.pkl'
     source = "data/images/football.webp"
     imgsz = (1280,1280)
     model = pickle.load(open(weights, 'rb'))
