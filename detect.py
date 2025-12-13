@@ -571,7 +571,7 @@ def print_model(x, key=""):
     elif type(x) == Silence: return
     else:
       for k, v in x.__dict__.items():
-          print(f'{key}.{k} = {x}')
+          print(f'{key}.{k} = {v}')
           print_model(v, f'{key}.{k}') 
 
 if __name__ == "__main__":
@@ -581,6 +581,8 @@ if __name__ == "__main__":
     imgsz = (1280,1280)
     model = pickle.load(open(weights, 'rb'))
     
+    #print_model(model, "model")
+
     path = "data/images/football.webp"
     im0 = cv2.imread(path)  # BGR
     im = letterbox(im0, new_shape=(1280, 1280), stride=32, auto=True)[0]  # padded resize
@@ -589,8 +591,6 @@ if __name__ == "__main__":
     im = Tensor(im).cast(dtypes.float32)
     im /= 255
     if len(im.shape) == 3: im = im[None]  # expand for batch dim
-    
-    #print_model(model, "model")
 
     pred = model(im)
     pred = pred[0]
