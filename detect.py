@@ -559,6 +559,21 @@ def clean_model_object(model): # vibe clean pkl works
     
     return model
 
+def print_model(x, key=""):
+    if type(x) == Tensor: print(f'{key} = {x}')
+    elif x == None: return
+    elif type(x) == Sequential:
+      for i in range(len(x.list)): print_model(x.list[i], f'{key}.{i}')
+    elif type(x) == int: print(f'{key} = {x}')
+    elif type(x) == tuple: print(f'{key} = {x}')
+    elif type(x) == bool: print(f'{key} = {x}')
+    elif type(x) == list: print(f'{key} = {x}')
+    elif type(x) == Silence: return
+    else:
+      for k, v in x.__dict__.items():
+          print(f'{key}.{k} = {x}')
+          print_model(v, f'{key}.{k}') 
+
 if __name__ == "__main__":
   for size in ["t", "s", "m", "c", "e"]:
     weights = f'./yolov9-{size}-tiny.pkl'
@@ -575,6 +590,7 @@ if __name__ == "__main__":
     im /= 255
     if len(im.shape) == 3: im = im[None]  # expand for batch dim
     
+    #print_model(model, "model")
 
     pred = model(im)
     pred = pred[0]
