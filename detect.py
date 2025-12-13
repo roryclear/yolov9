@@ -560,18 +560,13 @@ def clean_model_object(model): # vibe clean pkl works
     return model
 
 def print_model(x, key=""):
-    if type(x) == Tensor: print(f'{key} = {x}')
-    elif x == None: return
+    if type(x) in [type(None), int, tuple, bool, list, Silence, Tensor]: print(f'{key} = {x}')
     elif type(x) == Sequential:
+      print(f'{key} = {x}')
       for i in range(len(x.list)): print_model(x.list[i], f'{key}.{i}')
-    elif type(x) == int: print(f'{key} = {x}')
-    elif type(x) == tuple: print(f'{key} = {x}')
-    elif type(x) == bool: print(f'{key} = {x}')
-    elif type(x) == list: print(f'{key} = {x}')
-    elif type(x) == Silence: return
     else:
+      print(f'{key} = {x}')
       for k, v in x.__dict__.items():
-          print(f'{key}.{k} = {v}')
           print_model(v, f'{key}.{k}') 
 
 if __name__ == "__main__":
