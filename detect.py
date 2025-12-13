@@ -16,7 +16,7 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 import numpy as np
 
 
-class tiny_Sequential():
+class Sequential():
     def __init__(self): self.list = []
     def append(self,x): self.list.append(x)
     def __call__(self, x):
@@ -27,13 +27,13 @@ class tiny_Sequential():
     def __getitem__(self, idx):
       return self.list[idx]
 
-class tiny_Conv():
+class Conv():
     def __init__(self):
         super().__init__()
         return
     def __call__(self, x): return self.tiny_conv(x).silu()
 
-class tiny_ADown():
+class ADown():
     def __init__(self, c1=1, c2=1): super().__init__()
     def __call__(self, x):
       x = Tensor.avg_pool2d(x, 2, 1, 1, 0, False, True)
@@ -43,7 +43,7 @@ class tiny_ADown():
       x2 = self.cv2(x2)
       return Tensor.cat(x1, x2, dim=1)
 
-class tiny_AConv():
+class AConv():
     def __init__(self):  # ch_in, ch_out, shortcut, kernels, groups, expand
         super().__init__()
 
@@ -51,7 +51,7 @@ class tiny_AConv():
         x = Tensor.avg_pool2d(x, kernel_size=2, stride=1, padding=0, ceil_mode=False, count_include_pad=True)
         return self.cv1(x)
 
-class tiny_ELAN1():
+class ELAN1():
     def __init__(self, c1=1, c2=1, c3=1, c4=1):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
 
@@ -64,7 +64,7 @@ class tiny_ELAN1():
       y = self.cv4(y)
       return y
     
-class tiny_RepNBottleneck():
+class RepNBottleneck():
     # Standard bottleneck
     def __init__(self):  # ch_in, ch_out, shortcut, kernels, groups, expand
         super().__init__()
@@ -72,7 +72,7 @@ class tiny_RepNBottleneck():
     def __call__(self, x): return x + self.cv2(self.cv1(x))
 
   
-class tiny_RepNCSP():
+class RepNCSP():
     # CSP Bottleneck with 3 convolutions
     def __init__(self):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
@@ -85,7 +85,7 @@ class tiny_RepNCSP():
       result = self.cv3(x4)
       return result
 
-class tiny_RepNCSPELAN4():
+class RepNCSPELAN4():
     # csp-elan
     def __init__(self, c1=1, c2=1, c3=1, c4=1, c5=1):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
@@ -99,15 +99,15 @@ class tiny_RepNCSPELAN4():
       res = self.cv4(concat_result)
       return res
 
-class tiny_SP():
+class SP():
     def __init__(self, k=3, s=1):
-        super(tiny_SP, self).__init__()
+        super(SP, self).__init__()
         self.k = k
         self.s = s
 
     def __call__(self, x): return Tensor.max_pool2d(x, self.k, self.s, dilation=1, padding=self.k//2)
 
-class tiny_SPPELAN():
+class SPPELAN():
     # spp-elan
     def __init__(self):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
@@ -121,14 +121,14 @@ class tiny_SPPELAN():
         y = self.cv5(y)
         return y
 
-class tiny_Concat():
+class Concat():
     # Concatenate a list of tensors along dimension
     def __init__(self, dimension=1):
         super().__init__()
 
     def __call__(self, x): return Tensor.cat(x[0],x[1],dim=self.d)
 
-class tiny_DDetect():
+class DDetect():
     # YOLO Detect head for detection models
     dynamic = False  # force grid reconstruction
     export = False  # export mode
@@ -160,9 +160,9 @@ class tiny_DDetect():
         y = Tensor.cat(dbox, Tensor.sigmoid(cls), dim=1)
         return (y, x)
 
-class tiny_CBLinear():
+class CBLinear():
     def __init__(self):  # ch_in, ch_outs, kernel, stride, padding, groups
-        super(tiny_CBLinear, self).__init__()
+        super(CBLinear, self).__init__()
         return
 
     def __call__(self, x):
@@ -171,9 +171,9 @@ class tiny_CBLinear():
         outs = list(outs)
         return tuple(outs)
 
-class tiny_CBFuse():
+class CBFuse():
     def __init__(self):
-        super(tiny_CBFuse, self).__init__()
+        super(CBFuse, self).__init__()
 
     def __call__(self, xs):
         target_size = xs[-1].shape[2:]
@@ -217,7 +217,7 @@ def dist2bbox(distance, anchor_points, xywh=True, dim=-1):
     return c_xy.cat(wh, dim=1)
   return x1y1.cat(x2y2, dim=1)
 
-class tiny_DFL():
+class DFL():
     # DFL module
     def __init__(self, c1=17):
         super().__init__()
@@ -229,7 +229,7 @@ class tiny_DFL():
         return self.conv(x.transpose(2, 1).softmax(1)).view(b, 4, a)
 
 
-class tiny_Upsample(): # nearest for now
+class Upsample(): # nearest for now
   def __init__(self):
       super().__init__()
   
@@ -244,7 +244,7 @@ class Silence():
     def __call__(self, x):    
         return x
 
-class tiny_DetectionModel():
+class DetectionModel():
   def __call__(self, x):
     y = []  # outputs
     for i in range(len(self.model)):
