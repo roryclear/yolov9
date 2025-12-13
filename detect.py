@@ -19,7 +19,7 @@ import numpy as np
 class Sequential():
     def __init__(self, size=0):
        self.size = size
-       self.list = [None] * size if size else []
+       self.list = [None] * size
     def __call__(self, x): return x.sequential(self.list)
     def __len__(self): return len(self.list)
     def __setitem__(self, key, value): self.list[key] = value
