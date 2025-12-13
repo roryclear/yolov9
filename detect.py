@@ -17,15 +17,13 @@ import numpy as np
 
 
 class Sequential():
-    def __init__(self): self.list = []
-    def append(self,x): self.list.append(x)
-    def __call__(self, x):
-      for i in range(len(self.list)): x = self.list[i](x)
-      return x
+    def __init__(self, size=0):
+       self.size = size
+       self.list = [None] * size if size else []
+    def __call__(self, x): return x.sequential(self.list)
     def __len__(self): return len(self.list)
     def __setitem__(self, key, value): self.list[key] = value
-    def __getitem__(self, idx):
-      return self.list[idx]
+    def __getitem__(self, idx): return self.list[idx]
 
 class Conv():
     def __init__(self):
@@ -567,6 +565,7 @@ if __name__ == "__main__":
     imgsz = (1280,1280)
     model = pickle.load(open(weights, 'rb'))
 
+    
     path = "data/images/football.webp"
     im0 = cv2.imread(path)  # BGR
     im = letterbox(im0, new_shape=(1280, 1280), stride=32, auto=True)[0]  # padded resize
