@@ -712,7 +712,7 @@ if __name__ == "__main__":
       model.model[4].cv2[0].cv1 = new_model.model[4].cv2[0].cv1
       model.model[4].cv2[0].cv2 = new_model.model[4].cv2[0].cv2
       model.model[4].cv2[0].cv3 = new_model.model[4].cv2[0].cv3
-      model.model[4].cv2[0].m[0] = new_model.model[4].cv2[0].m[0]
+      model.model[4].cv2[0].m = new_model.model[4].cv2[0].m
 
     pred = model(im)
     pred = pred[0]
