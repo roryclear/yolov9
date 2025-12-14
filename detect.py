@@ -117,7 +117,7 @@ class RepNCSPELAN4():
     def __init__(self, in_ch=1, out_ch=1, in_ch2=1, out_ch2=1, in_ch3=1, out_ch3=1, in_ch4=1, out_ch4=1, in_ch5=1, out_ch5=1,\
                 in_ch6=1, out_ch6=1):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
-        self.cv1 = Conv(in_ch, out_ch, 1, 1)
+        self.cv1 = Conv(in_channels=in_ch, out_channels=out_ch, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
         self.cv2 = Sequential(size=2)
         self.cv2[0] = RepNCSP(in_ch2, out_ch2, in_ch3, out_ch3, in_ch4, out_ch4)
         self.cv2[1] = Conv(in_ch5, out_ch5, 3, 3)
@@ -706,6 +706,7 @@ if __name__ == "__main__":
       model.model[1] = new_model.model[1]
       model.model[2] = new_model.model[2]
       model.model[3] = new_model.model[3]
+      model.model[4].cv1 = new_model.model[4].cv1
 
     pred = model(im)
     pred = pred[0]
