@@ -123,7 +123,7 @@ class RepNCSPELAN4():
         self.cv2[1] = Conv(in_channels=in_ch5, out_channels=out_ch5, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
         self.cv3 = Sequential(size=2)
         self.cv3[0] = RepNCSP(in_ch2, out_ch2, in_ch3, out_ch3, in_ch4, out_ch4)
-        self.cv3[1] = Conv(in_ch3, out_ch3, 3, 3)
+        self.cv3[1] = Conv(in_channels=in_ch3, out_channels=out_ch3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
         self.cv4 = Conv(in_ch6, out_ch6, 1, 1)
 
     def __call__(self, x):
@@ -708,6 +708,7 @@ if __name__ == "__main__":
       model.model[3] = new_model.model[3]
       model.model[4].cv1 = new_model.model[4].cv1
       model.model[4].cv2[1] = new_model.model[4].cv2[1]
+      model.model[4].cv3[1] = new_model.model[4].cv3[1]
 
     pred = model(im)
     pred = pred[0]
