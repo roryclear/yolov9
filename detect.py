@@ -114,7 +114,8 @@ class RepNCSP():
 
 class RepNCSPELAN4():
     # csp-elan
-    def __init__(self, in_ch=1, out_ch=1, in_ch2=1, out_ch2=1, in_ch3=1, out_ch3=1, in_ch4=1, out_ch4=1, in_ch5=1, out_ch5=1):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self, in_ch=1, out_ch=1, in_ch2=1, out_ch2=1, in_ch3=1, out_ch3=1, in_ch4=1, out_ch4=1, in_ch5=1, out_ch5=1,\
+                in_ch6=1, out_ch6=1):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
         self.cv1 = Conv(in_ch, out_ch, 1, 1)
         self.cv2 = Sequential(size=2)
@@ -123,6 +124,7 @@ class RepNCSPELAN4():
         self.cv3 = Sequential(size=2)
         self.cv3[0] = RepNCSP(in_ch2, out_ch2, in_ch3, out_ch3, in_ch4, out_ch4)
         self.cv3[1] = Conv(in_ch3, out_ch3, 3, 3)
+        self.cv4 = Conv(in_ch6, out_ch6, 1, 1)
 
     def __call__(self, x):
       x = self.cv1(x)
@@ -625,24 +627,24 @@ if __name__ == "__main__":
       new_model.model[1] = Conv(in_channels=16, out_channels=32, kernel_size=(3, 3), groups=1, bias=True)
       new_model.model[2] = ELAN1()
       new_model.model[3] = AConv(in_channels=32, out_channels=64, kernel_size=(3, 3), groups=1, bias=True)
-      new_model.model[4] = RepNCSPELAN4(64, 64, 32, 16, 32, 32, 16, 16, 32, 32) # todo, last 2 is 2* prev?
+      new_model.model[4] = RepNCSPELAN4(64, 64, 32, 16, 32, 32, 16, 16, 32, 32, 128, 64) # todo, last 2 is 2* prev?
       new_model.model[5] = AConv(in_channels=64, out_channels=96, kernel_size=(3, 3), groups=1, bias=True)
-      new_model.model[6] = RepNCSPELAN4(96, 96, 48, 24, 48, 48, 24, 24, 48, 48)
+      new_model.model[6] = RepNCSPELAN4(96, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
       new_model.model[7] = AConv(in_channels=96, out_channels=128, kernel_size=(3, 3), groups=1, bias=True)
-      new_model.model[8] = RepNCSPELAN4(128, 128, 64, 32, 64, 64, 32, 32, 64, 64)
+      new_model.model[8] = RepNCSPELAN4(128, 128, 64, 32, 64, 64, 32, 32, 64, 64, 256, 128)
       new_model.model[9] = SPPELAN()
       new_model.model[10] = Upsample()
       new_model.model[11] = Concat()
-      new_model.model[12] = RepNCSPELAN4(224, 96, 48, 24, 48, 48, 24, 24, 48, 48)
+      new_model.model[12] = RepNCSPELAN4(224, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
       new_model.model[13] = Upsample()
       new_model.model[14] = Concat()
-      new_model.model[15] = RepNCSPELAN4(160, 64, 32, 16, 32, 32, 16, 16, 32, 32)
+      new_model.model[15] = RepNCSPELAN4(160, 64, 32, 16, 32, 32, 16, 16, 32, 32, 128, 64)
       new_model.model[16] = AConv(in_channels=64, out_channels=48, kernel_size=(3, 3), groups=1, bias=True)
       new_model.model[17] = Concat()
-      new_model.model[18] = RepNCSPELAN4(144, 96, 48, 24, 48, 48, 24, 24, 48, 48)
+      new_model.model[18] = RepNCSPELAN4(144, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
       new_model.model[19] = AConv(in_channels=96, out_channels=64, kernel_size=(3, 3), groups=1, bias=True)
       new_model.model[20] = Concat()
-      new_model.model[21] = RepNCSPELAN4(192, 128, 64, 32, 64, 64, 32, 32, 64, 64)
+      new_model.model[21] = RepNCSPELAN4(192, 128, 64, 32, 64, 64, 32, 32, 64, 64, 256, 128)
       new_model.model[22] = DDetect()
 
       print_model(new_model, "model")
