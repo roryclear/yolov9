@@ -175,6 +175,7 @@ class DDetect():
     def __init__(self, nc=80, ch=(), inplace=True):  # detection layer
         super().__init__()
         self.cv2 = Sequential(size=3)
+        self.cv3 = Sequential(size=3)
         self.cv2[0] = Sequential(size=3)
         self.cv2[1] = Sequential(size=3)
         self.cv2[2] = Sequential(size=3)
@@ -187,7 +188,19 @@ class DDetect():
         self.cv2[2][0] = Conv(128, 64, 3, 3)
         self.cv2[2][1] = Conv(16, 64, 3, 3)
         self.cv2[2][2] = nn.Conv2d(16, 64, 1, 1, 1, 1, 1, True)
-        return
+
+        self.cv3[0] = Sequential(size=3)
+        self.cv3[1] = Sequential(size=3)
+        self.cv3[2] = Sequential(size=3)
+        self.cv3[0][0] = Conv(64, 80, 3, 3)
+        self.cv3[0][1] = Conv(80, 80, 3, 3)
+        self.cv3[0][2] = nn.Conv2d(80, 80, 1, 1, 1, 1, 1, True)
+        self.cv3[1][0] = Conv(96, 80, 3, 3)
+        self.cv3[1][1] = Conv(80, 80, 3, 3)
+        self.cv3[1][2] = nn.Conv2d(80, 80, 1, 1, 1, 1, 1, True)
+        self.cv3[2][0] = Conv(128, 80, 3, 3)
+        self.cv3[2][1] = Conv(80, 80, 3, 3)
+        self.cv3[2][2] = nn.Conv2d(80, 80, 1, 1, 1, 1, 1, True)
     
     def __call__(self, x):
         shape = x[0].shape  # BCHW
@@ -622,7 +635,7 @@ def print_model(x, key=""):
           print_model(v, f'{key}.{k}') 
 
 if __name__ == "__main__":
-  for size in ["t", "s", "m", "c", "e"]:
+  for size in ["t", "s", "m", "c", "e"][:1]:
     weights = f'./yolov9-{size}-tiny.pkl'
     source = "data/images/football.webp"
     imgsz = (1280,1280)
