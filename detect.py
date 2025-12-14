@@ -84,19 +84,22 @@ class ELAN1(): # todo, hardcoded, might work on all though
     
 class RepNBottleneck():
     # Standard bottleneck
-    def __init__(self):  # ch_in, ch_out, shortcut, kernels, groups, expand
+    def __init__(self, in_ch, out_ch):  # ch_in, ch_out, shortcut, kernels, groups, expand
         super().__init__()
+        self.cv1 = Conv(in_ch, out_ch, 3, 3)
 
     def __call__(self, x): return x + self.cv2(self.cv1(x))
 
   
 class RepNCSP():
     # CSP Bottleneck with 3 convolutions
-    def __init__(self, in_ch=1, out_ch=1, in_ch2=1, out_ch2=1):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self, in_ch=1, out_ch=1, in_ch2=1, out_ch2=1, in_ch3=1, out_ch3=1):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
         self.cv1 = Conv(in_ch, out_ch, 1, 1)
         self.cv2 = Conv(in_ch, out_ch, 1, 1)
         self.cv3 = Conv(in_ch2, out_ch2, 1, 1)
+        self.m = Sequential(size=3)
+        self.m[0] = RepNBottleneck(in_ch3, out_ch3)
 
     def __call__(self, x):
       x1 = self.cv1(x)
@@ -108,11 +111,11 @@ class RepNCSP():
 
 class RepNCSPELAN4():
     # csp-elan
-    def __init__(self, in_ch=1, out_ch=1, in_ch2=1, out_ch2=1, in_ch3=1, out_ch3=1):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self, in_ch=1, out_ch=1, in_ch2=1, out_ch2=1, in_ch3=1, out_ch3=1, in_ch4=1, out_ch4=1):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
         self.cv1 = Conv(in_ch, out_ch, 1, 1)
         self.cv2 = Sequential(size=2)
-        self.cv2[0] = RepNCSP(in_ch2, out_ch2, in_ch3, out_ch3)
+        self.cv2[0] = RepNCSP(in_ch2, out_ch2, in_ch3, out_ch3, in_ch4, out_ch4)
 
     def __call__(self, x):
       x = self.cv1(x)
@@ -595,7 +598,7 @@ def print_model(x, key=""):
           print_model(v, f'{key}.{k}') 
 
 if __name__ == "__main__":
-  for size in ["t", "s", "m", "c", "e"]:
+  for size in ["t", "s", "m", "c", "e"][:1]:
     weights = f'./yolov9-{size}-tiny.pkl'
     source = "data/images/football.webp"
     imgsz = (1280,1280)
@@ -615,32 +618,36 @@ if __name__ == "__main__":
       new_model.model[1] = Conv(in_channels=16, out_channels=32, kernel_size=(3, 3), groups=1, bias=True)
       new_model.model[2] = ELAN1()
       new_model.model[3] = AConv(in_channels=32, out_channels=64, kernel_size=(3, 3), groups=1, bias=True)
-      new_model.model[4] = RepNCSPELAN4(64, 64, 32, 16, 32, 32) # todo, last 2 is 2* prev?
+      new_model.model[4] = RepNCSPELAN4(64, 64, 32, 16, 32, 32, 16, 16) # todo, last 2 is 2* prev?
       new_model.model[5] = AConv(in_channels=64, out_channels=96, kernel_size=(3, 3), groups=1, bias=True)
-      new_model.model[6] = RepNCSPELAN4(96, 96, 48, 24, 48, 48)
+      new_model.model[6] = RepNCSPELAN4(96, 96, 48, 24, 48, 48, 24, 24)
       new_model.model[7] = AConv(in_channels=96, out_channels=128, kernel_size=(3, 3), groups=1, bias=True)
-      new_model.model[8] = RepNCSPELAN4(128, 128, 64, 32, 64, 64)
+      new_model.model[8] = RepNCSPELAN4(128, 128, 64, 32, 64, 64, 32, 32)
       new_model.model[9] = SPPELAN()
       new_model.model[10] = Upsample()
       new_model.model[11] = Concat()
-      new_model.model[12] = RepNCSPELAN4(224, 96, 48, 24, 48, 48)
+      new_model.model[12] = RepNCSPELAN4(224, 96, 48, 24, 48, 48, 24, 24)
       new_model.model[13] = Upsample()
       new_model.model[14] = Concat()
-      new_model.model[15] = RepNCSPELAN4(160, 64, 32, 16, 32, 32)
+      new_model.model[15] = RepNCSPELAN4(160, 64, 32, 16, 32, 32, 16, 16)
       new_model.model[16] = AConv(in_channels=64, out_channels=48, kernel_size=(3, 3), groups=1, bias=True)
       new_model.model[17] = Concat()
-      new_model.model[18] = RepNCSPELAN4(144, 96, 48, 24, 48, 48)
+      new_model.model[18] = RepNCSPELAN4(144, 96, 48, 24, 48, 48, 24, 24)
       new_model.model[19] = AConv(in_channels=96, out_channels=64, kernel_size=(3, 3), groups=1, bias=True)
       new_model.model[20] = Concat()
-      new_model.model[21] = RepNCSPELAN4(192, 128, 64, 32, 64, 64)
+      new_model.model[21] = RepNCSPELAN4(192, 128, 64, 32, 64, 64, 32, 32)
       new_model.model[22] = DDetect()
 
       print_model(new_model, "model")
       new_state_dict = get_state_dict(new_model)
       print(new_state_dict)
 
+      missing = 0
       for k in state_dict.keys():
-        if k not in new_state_dict: print("missing",k)
+        if k not in new_state_dict:
+          missing += 1
+          print("missing",k.replace(".list.","."))
+      print(missing)
 
       load_state_dict(new_model, state_dict)
       print(get_state_dict(new_model))  
