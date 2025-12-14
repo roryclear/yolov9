@@ -40,6 +40,7 @@ class Conv():
     def __init__(self, in_channels:int, out_channels:int, kernel_size:int|tuple[int, ...], stride=1, padding:int|tuple[int, ...]|str=0,
                dilation=1, groups=1, bias=True):
         super().__init__()
+
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
         return
     def __call__(self, x): return self.conv(x).silu()
@@ -183,8 +184,8 @@ class DDetect():
         self.cv2[0] = Sequential(size=3)
         self.cv2[1] = Sequential(size=3)
         self.cv2[2] = Sequential(size=3)
-        self.cv2[0][0] = Conv(64, 64, 3, 3)
-        self.cv2[0][1] = Conv(16, 64, 3, 3)
+        self.cv2[0][0] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
+        self.cv2[0][1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=4, bias=True)
         self.cv2[0][2] = nn.Conv2d(16, 64, 1, 1, 1, 1, 1, True)
         self.cv2[1][0] = Conv(96, 64, 3, 3)
         self.cv2[1][1] = Conv(16, 64, 3, 3)
@@ -689,7 +690,6 @@ if __name__ == "__main__":
           missing += 1
           print("missing",k.replace(".list.","."))
       print(missing)
-
       load_state_dict(new_model, state_dict)
       print(get_state_dict(new_model))  
 
@@ -730,6 +730,8 @@ if __name__ == "__main__":
       model.model[20].f = [-1, 9]
       model.model[21] = new_model.model[21]
       model.model[22].dfl = new_model.model[22].dfl
+      model.model[22].cv2[0][0] = new_model.model[22].cv2[0][0]
+      model.model[22].cv2[0][1] = new_model.model[22].cv2[0][1]
 
     pred = model(im)
     pred = pred[0]
