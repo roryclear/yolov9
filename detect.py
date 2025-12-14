@@ -174,6 +174,19 @@ class DDetect():
 
     def __init__(self, nc=80, ch=(), inplace=True):  # detection layer
         super().__init__()
+        self.cv2 = Sequential(size=3)
+        self.cv2[0] = Sequential(size=3)
+        self.cv2[1] = Sequential(size=3)
+        self.cv2[2] = Sequential(size=3)
+        self.cv2[0][0] = Conv(64, 64, 3, 3)
+        self.cv2[0][1] = Conv(16, 64, 3, 3)
+        self.cv2[0][2] = nn.Conv2d(16, 64, 1, 1, 1, 1, 1, True)
+        self.cv2[1][0] = Conv(96, 64, 3, 3)
+        self.cv2[1][1] = Conv(16, 64, 3, 3)
+        self.cv2[1][2] = nn.Conv2d(16, 64, 1, 1, 1, 1, 1, True)
+        self.cv2[2][0] = Conv(128, 64, 3, 3)
+        self.cv2[2][1] = Conv(16, 64, 3, 3)
+        self.cv2[2][2] = nn.Conv2d(16, 64, 1, 1, 1, 1, 1, True)
         return
     
     def __call__(self, x):
