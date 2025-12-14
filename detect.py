@@ -199,9 +199,13 @@ class DDetect():
         self.cv3[0] = Sequential(size=3)
         self.cv3[1] = Sequential(size=3)
         self.cv3[2] = Sequential(size=3)
-        self.cv3[0][0] = Conv(64, 80, 3, 3)
-        self.cv3[0][1] = Conv(80, 80, 3, 3)
-        self.cv3[0][2] = nn.Conv2d(80, 80, 1, 1, 1, 1, 1, True)
+
+        self.cv3[0][0] = Conv(in_channels=64, out_channels=80, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
+        self.cv3[0][1] = Conv(in_channels=80, out_channels=80, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1), groups=1, bias=True)
+        self.cv3[0][2] = nn.Conv2d(in_channels=80, out_channels=80, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=1, dilation=(1, 1), bias=True)
+
+        #self.cv3[0][1] = Conv(80, 80, 3, 3)
+        #self.cv3[0][2] = nn.Conv2d(80, 80, 1, 1, 1, 1, 1, True)
         self.cv3[1][0] = Conv(96, 80, 3, 3)
         self.cv3[1][1] = Conv(80, 80, 3, 3)
         self.cv3[1][2] = nn.Conv2d(80, 80, 1, 1, 1, 1, 1, True)
@@ -691,6 +695,7 @@ if __name__ == "__main__":
         if k not in new_state_dict:
           missing += 1
           print("missing",k.replace(".list.","."))
+
       print(missing)
       load_state_dict(new_model, state_dict)
       print(get_state_dict(new_model))  
@@ -733,6 +738,7 @@ if __name__ == "__main__":
       model.model[21] = new_model.model[21]
       model.model[22].dfl = new_model.model[22].dfl
       model.model[22].cv2 = new_model.model[22].cv2
+      model.model[22].cv3[0] = new_model.model[22].cv3[0]
 
     pred = model(im)
     pred = pred[0]
