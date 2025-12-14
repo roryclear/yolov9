@@ -86,8 +86,8 @@ class RepNBottleneck():
     # Standard bottleneck
     def __init__(self, in_ch, out_ch):  # ch_in, ch_out, shortcut, kernels, groups, expand
         super().__init__()
-        self.cv1 = Conv(in_ch, out_ch, 3, 3)
-        self.cv2 = Conv(in_ch, out_ch, 3, 3)
+        self.cv1 = Conv(in_channels=in_ch,out_channels=out_ch, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1), groups=1)
+        self.cv2 = Conv(in_channels=in_ch,out_channels=out_ch, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1), groups=1)
 
     def __call__(self, x): return x + self.cv2(self.cv1(x))
 
@@ -709,10 +709,10 @@ if __name__ == "__main__":
       model.model[4].cv1 = new_model.model[4].cv1
       model.model[4].cv2[1] = new_model.model[4].cv2[1]
       model.model[4].cv3[1] = new_model.model[4].cv3[1]
-      model.model[4].cv4 = new_model.model[4].cv4
-
-    #print(model.model[4].cv4.conv.dilation, new_model.model[4].cv4.conv.dilation)
-    #exit()
+      model.model[4].cv2[0].cv1 = new_model.model[4].cv2[0].cv1
+      model.model[4].cv2[0].cv2 = new_model.model[4].cv2[0].cv2
+      model.model[4].cv2[0].cv3 = new_model.model[4].cv2[0].cv3
+      model.model[4].cv2[0].m[0] = new_model.model[4].cv2[0].m[0]
 
     pred = model(im)
     pred = pred[0]
