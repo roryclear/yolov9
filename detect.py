@@ -147,6 +147,8 @@ class SPPELAN():
     # spp-elan
     def __init__(self):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
+        self.cv1 = Conv(128, 64, 1, 1)
+        self.cv5 = Conv(256, 128, 1, 1)
 
     def __call__(self, x):
         y = [self.cv1(x)]
