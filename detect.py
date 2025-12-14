@@ -147,8 +147,11 @@ class SPPELAN():
     # spp-elan
     def __init__(self):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
-        self.cv1 = Conv(128, 64, 1, 1)
-        self.cv5 = Conv(256, 128, 1, 1)
+        self.cv1 = Conv(in_channels=128, out_channels=64, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
+        self.cv2 = SP(s=1, k=5)
+        self.cv3 = SP(s=1, k=5)
+        self.cv4 = SP(s=1, k=5)
+        self.cv5 = Conv(in_channels=256, out_channels=128, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
 
     def __call__(self, x):
         y = [self.cv1(x)]
@@ -660,9 +663,9 @@ if __name__ == "__main__":
       new_model.model[2] = ELAN1()
       new_model.model[3] = AConv(in_channels=32, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       new_model.model[4] = RepNCSPELAN4(64, 64, 32, 16, 32, 32, 16, 16, 32, 32, 128, 64) # todo, last 2 is 2* prev?
-      new_model.model[5] = AConv(in_channels=64, out_channels=96, kernel_size=(3, 3), groups=1, bias=True)
+      new_model.model[5] = AConv(in_channels=64, out_channels=96, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       new_model.model[6] = RepNCSPELAN4(96, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
-      new_model.model[7] = AConv(in_channels=96, out_channels=128, kernel_size=(3, 3), groups=1, bias=True)
+      new_model.model[7] = AConv(in_channels=96, out_channels=128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       new_model.model[8] = RepNCSPELAN4(128, 128, 64, 32, 64, 64, 32, 32, 64, 64, 256, 128)
       new_model.model[9] = SPPELAN()
       new_model.model[10] = Upsample()
@@ -707,6 +710,11 @@ if __name__ == "__main__":
       model.model[2] = new_model.model[2]
       model.model[3] = new_model.model[3]
       model.model[4] = new_model.model[4]
+      model.model[5] = new_model.model[5]
+      model.model[6] = new_model.model[6]
+      model.model[7] = new_model.model[7]
+      model.model[8] = new_model.model[8]
+      model.model[9] = new_model.model[9]
 
     pred = model(im)
     pred = pred[0]
