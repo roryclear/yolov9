@@ -6,7 +6,7 @@ import pickle
 from tinygrad import Tensor
 from tinygrad.helpers import fetch
 from tinygrad.dtype import dtypes
-from tinygrad.nn.state import load_state_dict, get_state_dict
+from tinygrad.nn.state import load_state_dict, get_state_dict, safe_save, safe_load
 import tinygrad.nn as nn
 
 TORCH_1_10 = False
@@ -655,45 +655,46 @@ if __name__ == "__main__":
     state_dict = get_state_dict(model)
     
     if size == "t":
-      new_model = DetectionModel()
-      new_model.model = Sequential(size=23)
-      new_model.model[0] = Conv(in_channels=3, out_channels=16, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      new_model.model[1] = Conv(in_channels=16, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
-      new_model.model[2] = ELAN1()
-      new_model.model[3] = AConv(in_channels=32, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      new_model.model[4] = RepNCSPELAN4(64, 64, 32, 16, 32, 32, 16, 16, 32, 32, 128, 64) # todo, last 2 is 2* prev?
-      new_model.model[5] = AConv(in_channels=64, out_channels=96, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      new_model.model[6] = RepNCSPELAN4(96, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
-      new_model.model[7] = AConv(in_channels=96, out_channels=128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      new_model.model[8] = RepNCSPELAN4(128, 128, 64, 32, 64, 64, 32, 32, 64, 64, 256, 128)
-      new_model.model[9] = SPPELAN()
-      new_model.model[10] = Upsample()
-      new_model.model[11] = Concat()
-      new_model.model[11].f = [-1, 6]
-      new_model.model[12] = RepNCSPELAN4(224, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
-      new_model.model[13] = Upsample()
-      new_model.model[14] = Concat()
-      new_model.model[14].f = [-1, 4]
-      new_model.model[15] = RepNCSPELAN4(160, 64, 32, 16, 32, 32, 16, 16, 32, 32, 128, 64)
-      new_model.model[16] = AConv(in_channels=64, out_channels=48, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      new_model.model[17] = Concat()
-      new_model.model[17].f = [-1, 12]
-      new_model.model[18] = RepNCSPELAN4(144, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
-      new_model.model[19] = AConv(in_channels=96, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      new_model.model[20] = Concat()
-      new_model.model[20].f = [-1, 9]
-      new_model.model[21] = RepNCSPELAN4(192, 128, 64, 32, 64, 64, 32, 32, 64, 64, 256, 128)
-      new_model.model[22] = DDetect()
-      new_model.model[22].nl = 3
-      new_model.model[22].no = 144
-      new_model.model[22].reg_max = 16
-      new_model.model[22].f = [15, 18, 21]
-      new_model.model[22].nc = 80
-      for i in range(len(new_model.model)):
-        if not hasattr(new_model.model[i], 'f'): new_model.model[i].f = -1
-      new_state_dict = get_state_dict(new_model)
-
-      load_state_dict(new_model, state_dict)
+      model = DetectionModel()
+      model.model = Sequential(size=23)
+      model.model[0] = Conv(in_channels=3, out_channels=16, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[1] = Conv(in_channels=16, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
+      model.model[2] = ELAN1()
+      model.model[3] = AConv(in_channels=32, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[4] = RepNCSPELAN4(64, 64, 32, 16, 32, 32, 16, 16, 32, 32, 128, 64) # todo, last 2 is 2* prev?
+      model.model[5] = AConv(in_channels=64, out_channels=96, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[6] = RepNCSPELAN4(96, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
+      model.model[7] = AConv(in_channels=96, out_channels=128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[8] = RepNCSPELAN4(128, 128, 64, 32, 64, 64, 32, 32, 64, 64, 256, 128)
+      model.model[9] = SPPELAN()
+      model.model[10] = Upsample()
+      model.model[11] = Concat()
+      model.model[11].f = [-1, 6]
+      model.model[12] = RepNCSPELAN4(224, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
+      model.model[13] = Upsample()
+      model.model[14] = Concat()
+      model.model[14].f = [-1, 4]
+      model.model[15] = RepNCSPELAN4(160, 64, 32, 16, 32, 32, 16, 16, 32, 32, 128, 64)
+      model.model[16] = AConv(in_channels=64, out_channels=48, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[17] = Concat()
+      model.model[17].f = [-1, 12]
+      model.model[18] = RepNCSPELAN4(144, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
+      model.model[19] = AConv(in_channels=96, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[20] = Concat()
+      model.model[20].f = [-1, 9]
+      model.model[21] = RepNCSPELAN4(192, 128, 64, 32, 64, 64, 32, 32, 64, 64, 256, 128)
+      model.model[22] = DDetect()
+      model.model[22].nl = 3
+      model.model[22].no = 144
+      model.model[22].reg_max = 16
+      model.model[22].f = [15, 18, 21]
+      model.model[22].nc = 80
+      for i in range(len(model.model)):
+        if not hasattr(model.model[i], 'f'): model.model[i].f = -1
+      state_dict = safe_load(f'./yolov9-{size}.safetensors')
+      load_state_dict(model, state_dict)
+    else:
+      model = pickle.load(open(weights, 'rb'))
 
     path = "data/images/football.webp"
     im0 = cv2.imread(path)  # BGR
@@ -704,10 +705,7 @@ if __name__ == "__main__":
     im /= 255
     if len(im.shape) == 3: im = im[None]  # expand for batch dim
     
-    if size == "t":
-      pred = new_model(im)
-    else:
-      pred = model(im)
+    pred = model(im)
     pred = pred[0]
     pred = postprocess(pred)
     pred = pred.numpy()
