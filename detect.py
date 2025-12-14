@@ -64,9 +64,14 @@ class AConv():
         x = Tensor.avg_pool2d(x, kernel_size=2, stride=1, padding=0, ceil_mode=False, count_include_pad=True)
         return self.cv1(x)
 
-class ELAN1():
-    def __init__(self, c1=1, c2=1, c3=1, c4=1):  # ch_in, ch_out, number, shortcut, groups, expansion
+class ELAN1(): # todo, hardcoded, might work on all though
+    def __init__(self):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
+        self.f = -1
+        self.cv1 = Conv(32, 32, 1, 1, 1)
+        self.cv2 = Conv(16, 16, 3, 3, 1)
+        self.cv3 = Conv(16, 16, 3, 3, 1)
+        self.cv4 = Conv(64, 32, 1, 1, 1)
 
     def __call__(self, x):
       y = self.cv1(x)
@@ -600,31 +605,36 @@ if __name__ == "__main__":
       print("\n\n\n\n")
       new_model = DetectionModel()
       new_model.model = Sequential(size=23)
-      new_model.model[0] = Conv(in_channels=3, out_channels=16, kernel_size=(3, 3), groups=1, bias=False)
-      new_model.model[1] = Conv(in_channels=16, out_channels=32, kernel_size=(3, 3), groups=1, bias=False)
-      new_model.model[3] = AConv(in_channels=32, out_channels=64, kernel_size=(3, 3), groups=1, bias=False)
-      new_model.model[4] = AConv(in_channels=64, out_channels=64, kernel_size=(1, 1), groups=1, bias=False)
-      new_model.model[5] = AConv(in_channels=64, out_channels=96, kernel_size=(3, 3), groups=1, bias=False)
-      new_model.model[6] = AConv(in_channels=96, out_channels=96, kernel_size=(1, 1), groups=1, bias=False)
-      new_model.model[7] = AConv(in_channels=96, out_channels=128, kernel_size=(3, 3), groups=1, bias=False)
-      new_model.model[8] = AConv(in_channels=128, out_channels=128, kernel_size=(1, 1), groups=1, bias=False)
-      new_model.model[9] = AConv(in_channels=128, out_channels=64, kernel_size=(1, 1), groups=1, bias=False)
+      new_model.model[0] = Conv(in_channels=3, out_channels=16, kernel_size=(3, 3), groups=1, bias=True)
+      new_model.model[1] = Conv(in_channels=16, out_channels=32, kernel_size=(3, 3), groups=1, bias=True)
+      new_model.model[2] = ELAN1()
+      new_model.model[3] = AConv(in_channels=32, out_channels=64, kernel_size=(3, 3), groups=1, bias=True)
+      new_model.model[4] = AConv(in_channels=64, out_channels=64, kernel_size=(1, 1), groups=1, bias=True)
+      new_model.model[5] = AConv(in_channels=64, out_channels=96, kernel_size=(3, 3), groups=1, bias=True)
+      new_model.model[6] = AConv(in_channels=96, out_channels=96, kernel_size=(1, 1), groups=1, bias=True)
+      new_model.model[7] = AConv(in_channels=96, out_channels=128, kernel_size=(3, 3), groups=1, bias=True)
+      new_model.model[8] = AConv(in_channels=128, out_channels=128, kernel_size=(1, 1), groups=1, bias=True)
+      new_model.model[9] = AConv(in_channels=128, out_channels=64, kernel_size=(1, 1), groups=1, bias=True)
       new_model.model[10] = Upsample()
       new_model.model[11] = Concat()
       new_model.model[12] = RepNCSPELAN4()
       new_model.model[13] = Upsample()
       new_model.model[14] = Concat()
       new_model.model[15] = RepNCSPELAN4()
-      new_model.model[16] = AConv(in_channels=64, out_channels=48, kernel_size=(3, 3), groups=1, bias=False)
+      new_model.model[16] = AConv(in_channels=64, out_channels=48, kernel_size=(3, 3), groups=1, bias=True)
       new_model.model[17] = Concat()
       new_model.model[18] = RepNCSPELAN4()
-      new_model.model[19] = AConv(in_channels=96, out_channels=64, kernel_size=(3, 3), groups=1, bias=False)
+      new_model.model[19] = AConv(in_channels=96, out_channels=64, kernel_size=(3, 3), groups=1, bias=True)
       new_model.model[20] = Concat()
       new_model.model[21] = RepNCSPELAN4()
       new_model.model[22] = DDetect()
 
       print_model(new_model, "model")
-      print(get_state_dict(new_model))
+      new_state_dict = get_state_dict(new_model)
+      print(new_state_dict)
+
+      for k in state_dict.keys():
+        if k not in new_state_dict: print("missing",k)
 
       load_state_dict(new_model, state_dict)
       print(get_state_dict(new_model))  
