@@ -87,6 +87,7 @@ class RepNBottleneck():
     def __init__(self, in_ch, out_ch):  # ch_in, ch_out, shortcut, kernels, groups, expand
         super().__init__()
         self.cv1 = Conv(in_ch, out_ch, 3, 3)
+        self.cv2 = Conv(in_ch, out_ch, 3, 3)
 
     def __call__(self, x): return x + self.cv2(self.cv1(x))
 
@@ -100,6 +101,8 @@ class RepNCSP():
         self.cv3 = Conv(in_ch2, out_ch2, 1, 1)
         self.m = Sequential(size=3)
         self.m[0] = RepNBottleneck(in_ch3, out_ch3)
+        self.m[1] = RepNBottleneck(in_ch3, out_ch3)
+        self.m[2] = RepNBottleneck(in_ch3, out_ch3)
 
     def __call__(self, x):
       x1 = self.cv1(x)
@@ -598,7 +601,7 @@ def print_model(x, key=""):
           print_model(v, f'{key}.{k}') 
 
 if __name__ == "__main__":
-  for size in ["t", "s", "m", "c", "e"][:1]:
+  for size in ["t", "s", "m", "c", "e"]:
     weights = f'./yolov9-{size}-tiny.pkl'
     source = "data/images/football.webp"
     imgsz = (1280,1280)
