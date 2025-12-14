@@ -191,10 +191,10 @@ class DDetect():
         self.cv2[1][0] = Conv(in_channels=96, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
         self.cv2[1][1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=4, bias=True)
         self.cv2[1][2] = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=4, bias=True)
-        #self.cv2[1][2] = nn.Conv2d(16, 64, 1, 1, 1, 1, 1, True)
-        self.cv2[2][0] = Conv(128, 64, 3, 3)
-        self.cv2[2][1] = Conv(16, 64, 3, 3)
-        self.cv2[2][2] = nn.Conv2d(16, 64, 1, 1, 1, 1, 1, True)
+
+        self.cv2[2][0] = Conv(in_channels=128, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
+        self.cv2[2][1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=4, bias=True)
+        self.cv2[2][2] = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=4, bias=True)
 
         self.cv3[0] = Sequential(size=3)
         self.cv3[1] = Sequential(size=3)
@@ -732,10 +732,7 @@ if __name__ == "__main__":
       model.model[20].f = [-1, 9]
       model.model[21] = new_model.model[21]
       model.model[22].dfl = new_model.model[22].dfl
-      model.model[22].cv2[0] = new_model.model[22].cv2[0]
-      model.model[22].cv2[1][0] = new_model.model[22].cv2[1][0]
-      model.model[22].cv2[1][1] = new_model.model[22].cv2[1][1]
-      model.model[22].cv2[1][2] = new_model.model[22].cv2[1][2]
+      model.model[22].cv2 = new_model.model[22].cv2
 
     pred = model(im)
     pred = pred[0]
