@@ -301,8 +301,9 @@ class DFL():
 
 
 class Upsample(): # nearest for now
-  def __init__(self):
+  def __init__(self, scale_factor=2):
       super().__init__()
+      self.scale_factor = scale_factor
   
   def __call__(self, x):
     N, C, H, W = x.shape
@@ -715,6 +716,7 @@ if __name__ == "__main__":
       model.model[7] = new_model.model[7]
       model.model[8] = new_model.model[8]
       model.model[9] = new_model.model[9]
+      model.model[10] = new_model.model[10]
 
     pred = model(im)
     pred = pred[0]
