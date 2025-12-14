@@ -68,10 +68,10 @@ class ELAN1(): # todo, hardcoded, might work on all though
     def __init__(self):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
         self.f = -1
-        self.cv1 = Conv(32, 32, 1, 1, 1)
-        self.cv2 = Conv(16, 16, 3, 3, 1)
-        self.cv3 = Conv(16, 16, 3, 3, 1)
-        self.cv4 = Conv(64, 32, 1, 1, 1)
+        self.cv1 = Conv(in_channels=32, out_channels=32, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
+        self.cv2 = Conv(in_channels=16, out_channels=16, kernel_size=3, stride=(1, 1), padding=(1, 1), dilation=(1, 1))
+        self.cv3 = Conv(in_channels=16, out_channels=16, kernel_size=3, stride=(1, 1), padding=(1, 1), dilation=(1, 1))
+        self.cv4 = Conv(in_channels=64, out_channels=32, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
 
     def __call__(self, x):
       y = self.cv1(x)
@@ -655,8 +655,8 @@ if __name__ == "__main__":
       print("\n\n\n\n")
       new_model = DetectionModel()
       new_model.model = Sequential(size=23)
-      new_model.model[0] = Conv(in_channels=3, out_channels=16, kernel_size=(3, 3), groups=1, bias=True)
-      new_model.model[1] = Conv(in_channels=16, out_channels=32, kernel_size=(3, 3), groups=1, bias=True)
+      new_model.model[0] = Conv(in_channels=3, out_channels=16, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      new_model.model[1] = Conv(in_channels=16, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
       new_model.model[2] = ELAN1()
       new_model.model[3] = AConv(in_channels=32, out_channels=64, kernel_size=(3, 3), groups=1, bias=True)
       new_model.model[4] = RepNCSPELAN4(64, 64, 32, 16, 32, 32, 16, 16, 32, 32, 128, 64) # todo, last 2 is 2* prev?
@@ -701,6 +701,11 @@ if __name__ == "__main__":
     im /= 255
     if len(im.shape) == 3: im = im[None]  # expand for batch dim
     
+    if size == "t":
+      model.model[0] = new_model.model[0]
+      model.model[1] = new_model.model[1]
+      model.model[2] = new_model.model[2]
+
     pred = model(im)
     pred = pred[0]
     pred = postprocess(pred)
