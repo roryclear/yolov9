@@ -652,14 +652,9 @@ if __name__ == "__main__":
     imgsz = (1280,1280)
     model = pickle.load(open(weights, 'rb'))
     
-    print_model(model, "model")
     state_dict = get_state_dict(model)
     
-    print(state_dict)
-    load_state_dict(model,state_dict)
-    
     if size == "t":
-      print("\n\n\n\n")
       new_model = DetectionModel()
       new_model.model = Sequential(size=23)
       new_model.model[0] = Conv(in_channels=3, out_channels=16, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
@@ -674,30 +669,31 @@ if __name__ == "__main__":
       new_model.model[9] = SPPELAN()
       new_model.model[10] = Upsample()
       new_model.model[11] = Concat()
+      new_model.model[11].f = [-1, 6]
       new_model.model[12] = RepNCSPELAN4(224, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
       new_model.model[13] = Upsample()
       new_model.model[14] = Concat()
+      new_model.model[14].f = [-1, 4]
       new_model.model[15] = RepNCSPELAN4(160, 64, 32, 16, 32, 32, 16, 16, 32, 32, 128, 64)
       new_model.model[16] = AConv(in_channels=64, out_channels=48, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       new_model.model[17] = Concat()
+      new_model.model[17].f = [-1, 12]
       new_model.model[18] = RepNCSPELAN4(144, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
       new_model.model[19] = AConv(in_channels=96, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       new_model.model[20] = Concat()
+      new_model.model[20].f = [-1, 9]
       new_model.model[21] = RepNCSPELAN4(192, 128, 64, 32, 64, 64, 32, 32, 64, 64, 256, 128)
       new_model.model[22] = DDetect()
-      for i in range(len(new_model.model)): new_model.model[i].f = -1
+      new_model.model[22].nl = 3
+      new_model.model[22].no = 144
+      new_model.model[22].reg_max = 16
+      new_model.model[22].f = [15, 18, 21]
+      new_model.model[22].nc = 80
+      for i in range(len(new_model.model)):
+        if not hasattr(new_model.model[i], 'f'): new_model.model[i].f = -1
       new_state_dict = get_state_dict(new_model)
-      print(new_state_dict)
 
-      missing = 0
-      for k in state_dict.keys():
-        if k not in new_state_dict:
-          missing += 1
-          print("missing",k.replace(".list.","."))
-
-      print(missing)
       load_state_dict(new_model, state_dict)
-      print(get_state_dict(new_model))  
 
     path = "data/images/football.webp"
     im0 = cv2.imread(path)  # BGR
@@ -709,40 +705,9 @@ if __name__ == "__main__":
     if len(im.shape) == 3: im = im[None]  # expand for batch dim
     
     if size == "t":
-      model.model[0] = new_model.model[0]
-      model.model[1] = new_model.model[1]
-      model.model[2] = new_model.model[2]
-      model.model[3] = new_model.model[3]
-      model.model[4] = new_model.model[4]
-      model.model[5] = new_model.model[5]
-      model.model[6] = new_model.model[6]
-      model.model[7] = new_model.model[7]
-      model.model[8] = new_model.model[8]
-      model.model[9] = new_model.model[9]
-      model.model[10] = new_model.model[10]
-      model.model[11] = new_model.model[11]
-      model.model[11].f = [-1, 6]
-      model.model[12] = new_model.model[12]
-      model.model[13] = new_model.model[13]
-      model.model[14] = new_model.model[14]
-      model.model[14].f = [-1, 4]
-      model.model[15] = new_model.model[15]
-      model.model[16] = new_model.model[16]
-      model.model[17] = new_model.model[17]
-      model.model[17].f = [-1, 12]
-      model.model[18] = new_model.model[18]
-      model.model[19] = new_model.model[19]
-      model.model[20] = new_model.model[20]
-      model.model[20].f = [-1, 9]
-      model.model[21] = new_model.model[21]
-      model.model[22] = new_model.model[22]
-      model.model[22].nl = 3
-      model.model[22].no = 144
-      model.model[22].reg_max = 16
-      model.model[22].f = [15, 18, 21]
-      model.model[22].nc = 80
-
-    pred = model(im)
+      pred = new_model(im)
+    else:
+      pred = model(im)
     pred = pred[0]
     pred = postprocess(pred)
     pred = pred.numpy()
