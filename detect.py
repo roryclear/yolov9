@@ -174,6 +174,10 @@ class DDetect():
 
     def __init__(self, nc=80, ch=(), inplace=True):  # detection layer
         super().__init__()
+        self.stride = Tensor([0 ,0 ,0])
+        self.anchors = Tensor.empty((2, 22680))
+        self.strides = Tensor.empty((1, 22680))
+        self.dfl = DFL()
         self.cv2 = Sequential(size=3)
         self.cv3 = Sequential(size=3)
         self.cv2[0] = Sequential(size=3)
@@ -285,7 +289,7 @@ class DFL():
     # DFL module
     def __init__(self, c1=17):
         super().__init__()
-        # self.bn = nn.BatchNorm2d(4)
+        self.conv = nn.Conv2d(16, 1, 1, 1, 1, 1, 1, False)
 
     def __call__(self, x):
         b, _, a = x.shape  # batch, channels, anchors
@@ -635,7 +639,7 @@ def print_model(x, key=""):
           print_model(v, f'{key}.{k}') 
 
 if __name__ == "__main__":
-  for size in ["t", "s", "m", "c", "e"][:1]:
+  for size in ["t", "s", "m", "c", "e"]:
     weights = f'./yolov9-{size}-tiny.pkl'
     source = "data/images/football.webp"
     imgsz = (1280,1280)
@@ -674,8 +678,7 @@ if __name__ == "__main__":
       new_model.model[20] = Concat()
       new_model.model[21] = RepNCSPELAN4(192, 128, 64, 32, 64, 64, 32, 32, 64, 64, 256, 128)
       new_model.model[22] = DDetect()
-
-      print_model(new_model, "model")
+      for i in range(len(new_model.model)): new_model.model[i].f = -1
       new_state_dict = get_state_dict(new_model)
       print(new_state_dict)
 
