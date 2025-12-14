@@ -6,6 +6,8 @@ import pickle
 from tinygrad import Tensor
 from tinygrad.helpers import fetch
 from tinygrad.dtype import dtypes
+from tinygrad.nn.state import load_state_dict, get_state_dict
+import tinygrad.nn as nn
 
 TORCH_1_10 = False
 FILE = Path(__file__).resolve()
@@ -26,9 +28,19 @@ class Sequential():
     def __setitem__(self, key, value): self.list[key] = value
     def __getitem__(self, idx): return self.list[idx]
 
+def autopad(k, p=None, d=1):  # kernel, padding, dilation
+    # Pad to 'same' shape outputs
+    if d > 1:
+        k = d * (k - 1) + 1 if isinstance(k, int) else [d * (x - 1) + 1 for x in k]  # actual kernel-size
+    if p is None:
+        p = k // 2 if isinstance(k, int) else [x // 2 for x in k]  # auto-pad
+    return p
+
 class Conv():
-    def __init__(self):
+    def __init__(self, in_channels:int, out_channels:int, kernel_size:int|tuple[int, ...], stride=1, padding:int|tuple[int, ...]|str=0,
+               dilation=1, groups=1, bias=True):
         super().__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
         return
     def __call__(self, x): return self.conv(x).silu()
 
@@ -43,8 +55,10 @@ class ADown():
       return Tensor.cat(x1, x2, dim=1)
 
 class AConv():
-    def __init__(self):  # ch_in, ch_out, shortcut, kernels, groups, expand
+    def __init__(self, in_channels:int, out_channels:int, kernel_size:int|tuple[int, ...], stride=1, padding:int|tuple[int, ...]|str=0,
+               dilation=1, groups=1, bias=True):
         super().__init__()
+        self.cv1 = Conv(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
 
     def __call__(self, x):
         x = Tensor.avg_pool2d(x, kernel_size=2, stride=1, padding=0, ceil_mode=False, count_include_pad=True)
@@ -576,7 +590,44 @@ if __name__ == "__main__":
     imgsz = (1280,1280)
     model = pickle.load(open(weights, 'rb'))
     
-    #print_model(model, "model")
+    print_model(model, "model")
+    state_dict = get_state_dict(model)
+    
+    print(state_dict)
+    load_state_dict(model,state_dict)
+    
+    if size == "t":
+      print("\n\n\n\n")
+      new_model = DetectionModel()
+      new_model.model = Sequential(size=23)
+      new_model.model[0] = Conv(in_channels=3, out_channels=16, kernel_size=(3, 3), groups=1, bias=False)
+      new_model.model[1] = Conv(in_channels=16, out_channels=32, kernel_size=(3, 3), groups=1, bias=False)
+      new_model.model[3] = AConv(in_channels=32, out_channels=64, kernel_size=(3, 3), groups=1, bias=False)
+      new_model.model[4] = AConv(in_channels=64, out_channels=64, kernel_size=(1, 1), groups=1, bias=False)
+      new_model.model[5] = AConv(in_channels=64, out_channels=96, kernel_size=(3, 3), groups=1, bias=False)
+      new_model.model[6] = AConv(in_channels=96, out_channels=96, kernel_size=(1, 1), groups=1, bias=False)
+      new_model.model[7] = AConv(in_channels=96, out_channels=128, kernel_size=(3, 3), groups=1, bias=False)
+      new_model.model[8] = AConv(in_channels=128, out_channels=128, kernel_size=(1, 1), groups=1, bias=False)
+      new_model.model[9] = AConv(in_channels=128, out_channels=64, kernel_size=(1, 1), groups=1, bias=False)
+      new_model.model[10] = Upsample()
+      new_model.model[11] = Concat()
+      new_model.model[12] = RepNCSPELAN4()
+      new_model.model[13] = Upsample()
+      new_model.model[14] = Concat()
+      new_model.model[15] = RepNCSPELAN4()
+      new_model.model[16] = AConv(in_channels=64, out_channels=48, kernel_size=(3, 3), groups=1, bias=False)
+      new_model.model[17] = Concat()
+      new_model.model[18] = RepNCSPELAN4()
+      new_model.model[19] = AConv(in_channels=96, out_channels=64, kernel_size=(3, 3), groups=1, bias=False)
+      new_model.model[20] = Concat()
+      new_model.model[21] = RepNCSPELAN4()
+      new_model.model[22] = DDetect()
+
+      print_model(new_model, "model")
+      print(get_state_dict(new_model))
+
+      load_state_dict(new_model, state_dict)
+      print(get_state_dict(new_model))  
 
     path = "data/images/football.webp"
     im0 = cv2.imread(path)  # BGR
@@ -586,7 +637,7 @@ if __name__ == "__main__":
     im = Tensor(im).cast(dtypes.float32)
     im /= 255
     if len(im.shape) == 3: im = im[None]  # expand for batch dim
-
+    
     pred = model(im)
     pred = pred[0]
     pred = postprocess(pred)
