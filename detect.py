@@ -163,10 +163,7 @@ class SPPELAN():
         return y
 
 class Concat():
-    # Concatenate a list of tensors along dimension
-    def __init__(self, dimension=1):
-        super().__init__()
-
+    def __init__(self, dimension=1): self.d = dimension
     def __call__(self, x): return Tensor.cat(x[0],x[1],dim=self.d)
 
 class DDetect():
@@ -675,10 +672,10 @@ if __name__ == "__main__":
       new_model.model[13] = Upsample()
       new_model.model[14] = Concat()
       new_model.model[15] = RepNCSPELAN4(160, 64, 32, 16, 32, 32, 16, 16, 32, 32, 128, 64)
-      new_model.model[16] = AConv(in_channels=64, out_channels=48, kernel_size=(3, 3), groups=1, bias=True)
+      new_model.model[16] = AConv(in_channels=64, out_channels=48, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       new_model.model[17] = Concat()
       new_model.model[18] = RepNCSPELAN4(144, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
-      new_model.model[19] = AConv(in_channels=96, out_channels=64, kernel_size=(3, 3), groups=1, bias=True)
+      new_model.model[19] = AConv(in_channels=96, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       new_model.model[20] = Concat()
       new_model.model[21] = RepNCSPELAN4(192, 128, 64, 32, 64, 64, 32, 32, 64, 64, 256, 128)
       new_model.model[22] = DDetect()
@@ -717,6 +714,23 @@ if __name__ == "__main__":
       model.model[8] = new_model.model[8]
       model.model[9] = new_model.model[9]
       model.model[10] = new_model.model[10]
+      model.model[11] = new_model.model[11]
+      model.model[11].f = [-1, 6]
+      model.model[12] = new_model.model[12]
+      model.model[13] = new_model.model[13]
+      model.model[14] = new_model.model[14]
+      model.model[14].f = [-1, 4]
+      model.model[15] = new_model.model[15]
+      model.model[16] = new_model.model[16]
+      model.model[17] = new_model.model[17]
+      model.model[17].f = [-1, 12]
+      model.model[18] = new_model.model[18]
+      model.model[19] = new_model.model[19]
+      model.model[20] = new_model.model[20]
+      model.model[20].f = [-1, 9]
+      model.model[21] = new_model.model[21]
+      #model.model[22] = new_model.model[22]
+      #model.model[22].nl = 3
 
     pred = model(im)
     pred = pred[0]
