@@ -706,13 +706,7 @@ if __name__ == "__main__":
       model.model[1] = new_model.model[1]
       model.model[2] = new_model.model[2]
       model.model[3] = new_model.model[3]
-      model.model[4].cv1 = new_model.model[4].cv1
-      model.model[4].cv2[1] = new_model.model[4].cv2[1]
-      model.model[4].cv3[1] = new_model.model[4].cv3[1]
-      model.model[4].cv2[0].cv1 = new_model.model[4].cv2[0].cv1
-      model.model[4].cv2[0].cv2 = new_model.model[4].cv2[0].cv2
-      model.model[4].cv2[0].cv3 = new_model.model[4].cv2[0].cv3
-      model.model[4].cv2[0].m = new_model.model[4].cv2[0].m
+      model.model[4] = new_model.model[4]
 
     pred = model(im)
     pred = pred[0]
