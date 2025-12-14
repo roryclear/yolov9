@@ -658,7 +658,7 @@ if __name__ == "__main__":
       new_model.model[0] = Conv(in_channels=3, out_channels=16, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       new_model.model[1] = Conv(in_channels=16, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
       new_model.model[2] = ELAN1()
-      new_model.model[3] = AConv(in_channels=32, out_channels=64, kernel_size=(3, 3), groups=1, bias=True)
+      new_model.model[3] = AConv(in_channels=32, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       new_model.model[4] = RepNCSPELAN4(64, 64, 32, 16, 32, 32, 16, 16, 32, 32, 128, 64) # todo, last 2 is 2* prev?
       new_model.model[5] = AConv(in_channels=64, out_channels=96, kernel_size=(3, 3), groups=1, bias=True)
       new_model.model[6] = RepNCSPELAN4(96, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
@@ -705,6 +705,7 @@ if __name__ == "__main__":
       model.model[0] = new_model.model[0]
       model.model[1] = new_model.model[1]
       model.model[2] = new_model.model[2]
+      model.model[3] = new_model.model[3]
 
     pred = model(im)
     pred = pred[0]
