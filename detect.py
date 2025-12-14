@@ -177,7 +177,7 @@ class DDetect():
         self.stride = Tensor([0 ,0 ,0])
         self.anchors = Tensor.empty((2, 22680))
         self.strides = Tensor.empty((1, 22680))
-        self.dfl = DFL()
+        self.dfl = DFL(c1=16)
         self.cv2 = Sequential(size=3)
         self.cv3 = Sequential(size=3)
         self.cv2[0] = Sequential(size=3)
@@ -289,8 +289,8 @@ class DFL():
     # DFL module
     def __init__(self, c1=17):
         super().__init__()
-        self.conv = nn.Conv2d(16, 1, 1, 1, 1, 1, 1, False)
-
+        self.conv = nn.Conv2d(in_channels=16, out_channels=1, kernel_size=(1, 1), stride=1, padding=0, dilation=1, groups=1, bias=False)
+        self.c1 = c1
     def __call__(self, x):
         b, _, a = x.shape  # batch, channels, anchors
         x = x.view(b, 4, self.c1, a)
@@ -729,8 +729,7 @@ if __name__ == "__main__":
       model.model[20] = new_model.model[20]
       model.model[20].f = [-1, 9]
       model.model[21] = new_model.model[21]
-      #model.model[22] = new_model.model[22]
-      #model.model[22].nl = 3
+      model.model[22].dfl = new_model.model[22].dfl
 
     pred = model(im)
     pred = pred[0]
