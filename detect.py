@@ -122,6 +122,7 @@ class RepNCSPELAN4():
         self.cv2[1] = Conv(in_ch5, out_ch5, 3, 3)
         self.cv3 = Sequential(size=2)
         self.cv3[0] = RepNCSP(in_ch2, out_ch2, in_ch3, out_ch3, in_ch4, out_ch4)
+        self.cv3[1] = Conv(in_ch3, out_ch3, 3, 3)
 
     def __call__(self, x):
       x = self.cv1(x)
