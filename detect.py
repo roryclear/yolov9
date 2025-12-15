@@ -66,13 +66,12 @@ class AConv():
         return self.cv1(x)
 
 class ELAN1(): # todo, hardcoded, might work on all though
-    def __init__(self):  # ch_in, ch_out, number, shortcut, groups, expansion
-        super().__init__()
+    def __init__(self, ch1=32, ch2=16, ch4=64):  # ch_in, ch_out, number, shortcut, groups, expansion
         self.f = -1
-        self.cv1 = Conv(in_channels=32, out_channels=32, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
-        self.cv2 = Conv(in_channels=16, out_channels=16, kernel_size=3, stride=(1, 1), padding=(1, 1), dilation=(1, 1))
-        self.cv3 = Conv(in_channels=16, out_channels=16, kernel_size=3, stride=(1, 1), padding=(1, 1), dilation=(1, 1))
-        self.cv4 = Conv(in_channels=64, out_channels=32, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
+        self.cv1 = Conv(in_channels=ch1, out_channels=ch1, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
+        self.cv2 = Conv(in_channels=ch2, out_channels=ch2, kernel_size=3, stride=(1, 1), padding=(1, 1), dilation=(1, 1))
+        self.cv3 = Conv(in_channels=ch2, out_channels=ch2, kernel_size=3, stride=(1, 1), padding=(1, 1), dilation=(1, 1))
+        self.cv4 = Conv(in_channels=ch4, out_channels=ch1, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
 
     def __call__(self, x):
       y = self.cv1(x)
@@ -646,7 +645,7 @@ def print_model(x, key=""):
           print_model(v, f'{key}.{k}') 
 
 if __name__ == "__main__":
-  for size in ["t", "s", "m", "c", "e"]:
+  for size in ["t", "s", "m", "c", "e"][1:]:
     weights = f'./yolov9-{size}-tiny.pkl'
     source = "data/images/football.webp"
     imgsz = (1280,1280)
@@ -693,6 +692,17 @@ if __name__ == "__main__":
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
+    elif size == "s":
+      model = pickle.load(open(weights, 'rb'))
+      #model = DetectionModel()
+      #model.model = Sequential(size=23)
+      model.model[0] = Conv(in_channels=3, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[1] = Conv(in_channels=32, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
+      
+      for i in range(len(model.model)):
+        if not hasattr(model.model[i], 'f'): model.model[i].f = -1
+      state_dict = safe_load(f'./yolov9-{size}.safetensors')
+      load_state_dict(model, state_dict)
     else:
       model = pickle.load(open(weights, 'rb'))
 
@@ -715,6 +725,7 @@ if __name__ == "__main__":
     pred = rescale_bounding_boxes(pred)
     draw_bounding_boxes_and_save(source, f"out_{size}.jpg", pred, class_labels)
   print("passed")
+
 
 
 
