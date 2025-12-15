@@ -768,6 +768,11 @@ if __name__ == "__main__":
       model.model[2].cv2[1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
       model.model[2].cv3[1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
       model.model[2].cv4 = Conv(in_channels=256, out_channels=128, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
+      model.model[2].cv2[0].cv1 = Conv(64, 32, 1, 1)
+      model.model[2].cv2[0].cv2 = Conv(64, 32, 1, 1)
+      model.model[2].cv2[0].cv3 = Conv(64, 64, 1, 1)
+      model.model[2].cv2[0].m = Sequential(size=1)
+      model.model[2].cv2[0].m[0] = RepNBottleneck(32, 32)
 
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
