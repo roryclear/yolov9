@@ -143,13 +143,13 @@ class SP():
 
 class SPPELAN():
     # spp-elan
-    def __init__(self, size=1):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self, ch0=128, ch1=64, ch2=256, ch3=128):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
-        self.cv1 = Conv(in_channels=128*size, out_channels=64*size, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
+        self.cv1 = Conv(in_channels=ch0, out_channels=ch1, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
         self.cv2 = SP(s=1, k=5)
         self.cv3 = SP(s=1, k=5)
         self.cv4 = SP(s=1, k=5)
-        self.cv5 = Conv(in_channels=256*size, out_channels=128*size, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
+        self.cv5 = Conv(in_channels=ch2, out_channels=ch3, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
 
     def __call__(self, x):
         y = [self.cv1(x)]
@@ -704,7 +704,7 @@ if __name__ == "__main__":
       model.model[6] = RepNCSPELAN4(96*2, 96*2, 48*2, 24*2, 48*2, 48*2, 24*2, 24*2, 48*2, 48*2, 192*2, 96*2)
       model.model[7] = AConv(in_channels=96*2, out_channels=128*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       model.model[8] = RepNCSPELAN4(128*2, 128*2, 64*2, 32*2, 64*2, 64*2, 32*2, 32*2, 64*2, 64*2, 256*2, 128*2)
-      model.model[9] = SPPELAN(size=2)
+      model.model[9] = SPPELAN(ch0=256, ch1=128, ch2=512, ch3=256)
       model.model[10] = Upsample()
       model.model[11] = Concat()
       model.model[11].f = [-1, 6]
@@ -768,7 +768,7 @@ if __name__ == "__main__":
       model.model[6] = RepNCSPELAN4(360, 360, 180, 90, 180, 180, 90, 90, 180, 180, 720, 360, n=1)
       model.model[7] = AConv(in_channels=360, out_channels=480, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       model.model[8] = RepNCSPELAN4(480, 480, 240, 120, 240, 240, 120, 120, 240, 240, 960, 480, n=1)
-      #model.model[9] = SPPELAN(size=2)
+      model.model[9] = SPPELAN(ch0=480, ch1=240, ch2=960, ch3=480)
 
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
