@@ -94,15 +94,13 @@ class RepNBottleneck():
   
 class RepNCSP():
     # CSP Bottleneck with 3 convolutions
-    def __init__(self, in_ch=1, out_ch=1, in_ch2=1, out_ch2=1, in_ch3=1, out_ch3=1):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self, in_ch=1, out_ch=1, in_ch2=1, out_ch2=1, in_ch3=1, out_ch3=1, n=3):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
         self.cv1 = Conv(in_ch, out_ch, 1, 1)
         self.cv2 = Conv(in_ch, out_ch, 1, 1)
         self.cv3 = Conv(in_ch2, out_ch2, 1, 1)
-        self.m = Sequential(size=3)
-        self.m[0] = RepNBottleneck(in_ch3, out_ch3)
-        self.m[1] = RepNBottleneck(in_ch3, out_ch3)
-        self.m[2] = RepNBottleneck(in_ch3, out_ch3)
+        self.m = Sequential(size=n)
+        for i in range(n): self.m[i] = RepNBottleneck(in_ch3, out_ch3)
 
     def __call__(self, x):
       x1 = self.cv1(x)
@@ -115,14 +113,14 @@ class RepNCSP():
 class RepNCSPELAN4():
     # csp-elan
     def __init__(self, in_ch=1, out_ch=1, in_ch2=1, out_ch2=1, in_ch3=1, out_ch3=1, in_ch4=1, out_ch4=1, in_ch5=1, out_ch5=1,\
-                in_ch6=1, out_ch6=1):  # ch_in, ch_out, number, shortcut, groups, expansion
+                in_ch6=1, out_ch6=1, n=3):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
         self.cv1 = Conv(in_channels=in_ch, out_channels=out_ch, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
         self.cv2 = Sequential(size=2)
-        self.cv2[0] = RepNCSP(in_ch2, out_ch2, in_ch3, out_ch3, in_ch4, out_ch4)
+        self.cv2[0] = RepNCSP(in_ch2, out_ch2, in_ch3, out_ch3, in_ch4, out_ch4, n)
         self.cv2[1] = Conv(in_channels=in_ch5, out_channels=out_ch5, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
         self.cv3 = Sequential(size=2)
-        self.cv3[0] = RepNCSP(in_ch2, out_ch2, in_ch3, out_ch3, in_ch4, out_ch4)
+        self.cv3[0] = RepNCSP(in_ch2, out_ch2, in_ch3, out_ch3, in_ch4, out_ch4, n)
         self.cv3[1] = Conv(in_channels=in_ch3, out_channels=out_ch3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
         self.cv4 = Conv(in_channels=in_ch6, out_channels=out_ch6, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
 
@@ -763,58 +761,11 @@ if __name__ == "__main__":
       model = pickle.load(open(weights, 'rb'))
       model.model[0] = Conv(in_channels=3, out_channels=16*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       model.model[1] = Conv(in_channels=16*2, out_channels=32*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
-      # RepNCSPELAN4
-      model.model[2].cv1 = Conv(in_channels=64, out_channels=128, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
-      model.model[2].cv2[1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
-      model.model[2].cv3[1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
-      model.model[2].cv4 = Conv(in_channels=256, out_channels=128, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
-      model.model[2].cv2[0].cv1 = Conv(64, 32, 1, 1)
-      model.model[2].cv2[0].cv2 = Conv(64, 32, 1, 1)
-      model.model[2].cv2[0].cv3 = Conv(64, 64, 1, 1)
-      model.model[2].cv2[0].m = Sequential(size=1)
-      model.model[2].cv2[0].m[0] = RepNBottleneck(32, 32)
-      
-      model.model[2].cv3[0].cv1 = Conv(64, 32, 1, 1)
-      model.model[2].cv3[0].cv2 = Conv(64, 32, 1, 1)
-      model.model[2].cv3[0].cv3 = Conv(64, 64, 1, 1)
-      model.model[2].cv3[0].m[0] = RepNBottleneck(32, 32)
-
+      model.model[2] = RepNCSPELAN4(64, 64*2, 32*2, 16*2, 32*2, 32*2, 16*2, 16*2, 32*2, 32*2, 128*2, 64*2, n=1)
       model.model[3] = AConv(in_channels=32*4, out_channels=240, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      
-      # RepNCSPELAN4
-      model.model[4].cv1 = Conv(in_channels=240, out_channels=240, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
-      model.model[4].cv2[1] = Conv(in_channels=120, out_channels=120, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
-      model.model[4].cv3[1] = Conv(in_channels=120, out_channels=120, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
-      model.model[4].cv4 = Conv(in_channels=480, out_channels=240, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
-      model.model[4].cv2[0].cv1 = Conv(120, 60, 1, 1)
-      model.model[4].cv2[0].cv2 = Conv(120, 60, 1, 1)
-      model.model[4].cv2[0].cv3 = Conv(120, 120, 1, 1)
-      model.model[4].cv2[0].m = Sequential(size=1)
-      model.model[4].cv2[0].m[0] = RepNBottleneck(60, 60)
-      
-      model.model[4].cv3[0].cv1 = Conv(120, 60, 1, 1)
-      model.model[4].cv3[0].cv2 = Conv(120, 60, 1, 1)
-      model.model[4].cv3[0].cv3 = Conv(120, 120, 1, 1)
-      model.model[4].cv3[0].m[0] = RepNBottleneck(60, 60)
-
+      model.model[4] = RepNCSPELAN4(240, 240, 120, 60, 120, 120, 60, 60, 120, 120, 480, 240, n=1)
       model.model[5] = AConv(in_channels=240, out_channels=360, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      
-
-      model.model[6].cv1 = Conv(in_channels=360, out_channels=360, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
-      model.model[6].cv2[1] = Conv(in_channels=180, out_channels=180, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
-      model.model[6].cv3[1] = Conv(in_channels=180, out_channels=180, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
-      model.model[6].cv4 = Conv(in_channels=720, out_channels=360, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
-      model.model[6].cv2[0].cv1 = Conv(180, 90, 1, 1)
-      model.model[6].cv2[0].cv2 = Conv(180, 90, 1, 1)
-      model.model[6].cv2[0].cv3 = Conv(180, 180, 1, 1)
-      model.model[6].cv2[0].m = Sequential(size=1)
-      model.model[6].cv2[0].m[0] = RepNBottleneck(90, 90)
-      
-      model.model[6].cv3[0].cv1 = Conv(180, 90, 1, 1)
-      model.model[6].cv3[0].cv2 = Conv(180, 90, 1, 1)
-      model.model[6].cv3[0].cv3 = Conv(180, 180, 1, 1)
-      model.model[6].cv3[0].m[0] = RepNBottleneck(90, 90)
-
+      model.model[6] = RepNCSPELAN4(360, 360, 180, 90, 180, 180, 90, 90, 180, 180, 720, 360, n=1)
       model.model[7] = AConv(in_channels=360, out_channels=480, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
 
       for i in range(len(model.model)):
