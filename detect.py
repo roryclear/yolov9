@@ -145,13 +145,13 @@ class SP():
 
 class SPPELAN():
     # spp-elan
-    def __init__(self):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self, size=1):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
-        self.cv1 = Conv(in_channels=128, out_channels=64, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
+        self.cv1 = Conv(in_channels=128*size, out_channels=64*size, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
         self.cv2 = SP(s=1, k=5)
         self.cv3 = SP(s=1, k=5)
         self.cv4 = SP(s=1, k=5)
-        self.cv5 = Conv(in_channels=256, out_channels=128, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
+        self.cv5 = Conv(in_channels=256*size, out_channels=128*size, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
 
     def __call__(self, x):
         y = [self.cv1(x)]
@@ -704,6 +704,24 @@ if __name__ == "__main__":
       model.model[5] = AConv(in_channels=64*2, out_channels=96*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       model.model[6] = RepNCSPELAN4(96*2, 96*2, 48*2, 24*2, 48*2, 48*2, 24*2, 24*2, 48*2, 48*2, 192*2, 96*2)
       model.model[7] = AConv(in_channels=96*2, out_channels=128*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[8] = RepNCSPELAN4(128*2, 128*2, 64*2, 32*2, 64*2, 64*2, 32*2, 32*2, 64*2, 64*2, 256*2, 128*2)
+      model.model[9] = SPPELAN(size=2)
+      model.model[10] = Upsample()
+      model.model[11] = Concat()
+      model.model[11].f = [-1, 6]
+      model.model[12] = RepNCSPELAN4(224*2, 96*2, 48*2, 24*2, 48*2, 48*2, 24*2, 24*2, 48*2, 48*2, 192*2, 96*2)
+      model.model[13] = Upsample()
+      model.model[14] = Concat()
+      model.model[14].f = [-1, 4]
+      model.model[15] = RepNCSPELAN4(160*2, 64*2, 32*2, 16*2, 32*2, 32*2, 16*2, 16*2, 32*2, 32*2, 128*2, 64*2)
+      model.model[16] = AConv(in_channels=64*2, out_channels=48*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[17] = Concat()
+      model.model[17].f = [-1, 12]
+      model.model[18] = RepNCSPELAN4(144*2, 96*2, 48*2, 24*2, 48*2, 48*2, 24*2, 24*2, 48*2, 48*2, 192*2, 96*2)
+      model.model[19] = AConv(in_channels=96*2, out_channels=64*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[20] = Concat()
+      model.model[20].f = [-1, 9]
+      model.model[21] = RepNCSPELAN4(192*2, 128*2, 64*2, 32*2, 64*2, 64*2, 32*2, 32*2, 64*2, 64*2, 256*2, 128*2)
       
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
