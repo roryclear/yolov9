@@ -183,6 +183,10 @@ class DDetect():
         self.cv2[0] = Sequential(size=3)
         self.cv2[1] = Sequential(size=3)
         self.cv2[2] = Sequential(size=3)
+        self.cv3[0] = Sequential(size=3)
+        self.cv3[1] = Sequential(size=3)
+        self.cv3[2] = Sequential(size=3)
+
         self.cv2[0][0] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
         self.cv2[0][1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=4, bias=True)
         self.cv2[0][2] = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=4, bias=True)
@@ -195,9 +199,6 @@ class DDetect():
         self.cv2[2][1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=4, bias=True)
         self.cv2[2][2] = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=4, bias=True)
 
-        self.cv3[0] = Sequential(size=3)
-        self.cv3[1] = Sequential(size=3)
-        self.cv3[2] = Sequential(size=3)
 
         self.cv3[0][0] = Conv(in_channels=64, out_channels=80, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
         self.cv3[0][1] = Conv(in_channels=80, out_channels=80, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1), groups=1, bias=True)
@@ -722,7 +723,38 @@ if __name__ == "__main__":
       model.model[20] = Concat()
       model.model[20].f = [-1, 9]
       model.model[21] = RepNCSPELAN4(192*2, 128*2, 64*2, 32*2, 64*2, 64*2, 32*2, 32*2, 64*2, 64*2, 256*2, 128*2)
-      
+
+      model.model[22].cv2[0][0] = Conv(in_channels=64*2, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
+      model.model[22].cv2[0][1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=4, bias=True)
+      model.model[22].cv2[0][2] = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=4, bias=True)
+
+      model.model[22].cv2[1][0] = Conv(in_channels=96*2, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
+      model.model[22].cv2[1][1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=4, bias=True)
+      model.model[22].cv2[1][2] = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=4, bias=True)
+
+      model.model[22].cv2[2][0] = Conv(in_channels=128*2, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
+      model.model[22].cv2[2][1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=4, bias=True)
+      model.model[22].cv2[2][2] = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=4, bias=True)
+
+
+      model.model[22].cv3[0][0] = Conv(in_channels=64*2, out_channels=128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
+      model.model[22].cv3[0][1] = Conv(in_channels=128, out_channels=128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1), groups=1, bias=True)
+      model.model[22].cv3[0][2] = nn.Conv2d(in_channels=128, out_channels=80, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=1, dilation=(1, 1), bias=True)
+
+      model.model[22].cv3[1][0] = Conv(in_channels=96*2, out_channels=128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
+      model.model[22].cv3[1][1] = Conv(in_channels=128, out_channels=128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1), groups=1, bias=True)
+      model.model[22].cv3[1][2] = nn.Conv2d(in_channels=128, out_channels=80, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=1, dilation=(1, 1), bias=True)
+
+      model.model[22].cv3[2][0] = Conv(in_channels=128*2, out_channels=128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
+      model.model[22].cv3[2][1] = Conv(in_channels=128, out_channels=128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1), groups=1, bias=True)
+      model.model[22].cv3[2][2] = nn.Conv2d(in_channels=128, out_channels=80, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=1, dilation=(1, 1), bias=True)
+
+      model.model[22].nl = 3
+      model.model[22].no = 144
+      model.model[22].f = [15, 18, 21]
+      model.model[22].reg_max = 16
+      model.model[22].nc = 80
+
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
