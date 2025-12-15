@@ -696,10 +696,14 @@ if __name__ == "__main__":
       model = pickle.load(open(weights, 'rb'))
       #model = DetectionModel()
       #model.model = Sequential(size=23)
-      model.model[0] = Conv(in_channels=3, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      model.model[1] = Conv(in_channels=32, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
+      model.model[0] = Conv(in_channels=3, out_channels=16*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[1] = Conv(in_channels=16*2, out_channels=32*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
       model.model[2] = ELAN1(ch1=64, ch2=32, ch4=128)
-      model.model[3] = AConv(in_channels=64, out_channels=128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[3] = AConv(in_channels=32*2, out_channels=64*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[4] = RepNCSPELAN4(64*2, 64*2, 32*2, 16*2, 32*2, 32*2, 16*2, 16*2, 32*2, 32*2, 128*2, 64*2)
+      model.model[5] = AConv(in_channels=64*2, out_channels=96*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[6] = RepNCSPELAN4(96*2, 96*2, 48*2, 24*2, 48*2, 48*2, 24*2, 24*2, 48*2, 48*2, 192*2, 96*2)
+      model.model[7] = AConv(in_channels=96*2, out_channels=128*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
