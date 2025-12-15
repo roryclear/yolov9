@@ -695,8 +695,8 @@ if __name__ == "__main__":
       load_state_dict(model, state_dict)
     elif size == "s":
       model = pickle.load(open(weights, 'rb'))
-      #model = DetectionModel()
-      #model.model = Sequential(size=23)
+      model = DetectionModel()
+      model.model = Sequential(size=23)
       model.model[0] = Conv(in_channels=3, out_channels=16*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       model.model[1] = Conv(in_channels=16*2, out_channels=32*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
       model.model[2] = ELAN1(ch1=64, ch2=32, ch4=128)
@@ -723,7 +723,7 @@ if __name__ == "__main__":
       model.model[20] = Concat()
       model.model[20].f = [-1, 9]
       model.model[21] = RepNCSPELAN4(192*2, 128*2, 64*2, 32*2, 64*2, 64*2, 32*2, 32*2, 64*2, 64*2, 256*2, 128*2)
-
+      model.model[22] = DDetect()
       model.model[22].cv2[0][0] = Conv(in_channels=64*2, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
       model.model[22].cv2[0][1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=4, bias=True)
       model.model[22].cv2[0][2] = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=4, bias=True)
