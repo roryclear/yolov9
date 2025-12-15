@@ -66,9 +66,9 @@ class AConv():
         return self.cv1(x)
 
 class ELAN1(): # todo, hardcoded, might work on all though
-    def __init__(self, ch1=32, ch2=16, ch3=64):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self, ch0=32, ch1=32, ch2=16, ch3=64):  # ch_in, ch_out, number, shortcut, groups, expansion
       self.f = -1
-      self.cv1 = Conv(in_channels=ch1, out_channels=ch1, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
+      self.cv1 = Conv(in_channels=ch0, out_channels=ch1, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
       self.cv2 = Conv(in_channels=ch2, out_channels=ch2, kernel_size=3, stride=(1, 1), padding=(1, 1), dilation=(1, 1))
       self.cv3 = Conv(in_channels=ch2, out_channels=ch2, kernel_size=3, stride=(1, 1), padding=(1, 1), dilation=(1, 1))
       self.cv4 = Conv(in_channels=ch3, out_channels=ch1, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
@@ -699,7 +699,7 @@ if __name__ == "__main__":
       model.model = Sequential(size=23)
       model.model[0] = Conv(in_channels=3, out_channels=16*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       model.model[1] = Conv(in_channels=16*2, out_channels=32*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
-      model.model[2] = ELAN1(ch1=64, ch2=32, ch3=128)
+      model.model[2] = ELAN1(ch0=64, ch1=64, ch2=32, ch3=128)
       model.model[3] = AConv(in_channels=32*2, out_channels=64*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       model.model[4] = RepNCSPELAN4(64*2, 64*2, 32*2, 16*2, 32*2, 32*2, 16*2, 16*2, 32*2, 32*2, 128*2, 64*2)
       model.model[5] = AConv(in_channels=64*2, out_channels=96*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
@@ -763,6 +763,11 @@ if __name__ == "__main__":
       model = pickle.load(open(weights, 'rb'))
       model.model[0] = Conv(in_channels=3, out_channels=16*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       model.model[1] = Conv(in_channels=16*2, out_channels=32*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
+      # RepNCSPELAN4
+      model.model[2].cv1 = Conv(in_channels=64, out_channels=128, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
+      model.model[2].cv2[1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
+      model.model[2].cv3[1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
+      model.model[2].cv4 = Conv(in_channels=256, out_channels=128, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
 
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
