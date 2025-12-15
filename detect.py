@@ -767,6 +767,8 @@ if __name__ == "__main__":
       model.model[5] = AConv(in_channels=240, out_channels=360, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       model.model[6] = RepNCSPELAN4(360, 360, 180, 90, 180, 180, 90, 90, 180, 180, 720, 360, n=1)
       model.model[7] = AConv(in_channels=360, out_channels=480, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[8] = RepNCSPELAN4(480, 480, 240, 120, 240, 240, 120, 120, 240, 240, 960, 480, n=1)
+      #model.model[9] = SPPELAN(size=2)
 
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
