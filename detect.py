@@ -645,7 +645,7 @@ def print_model(x, key=""):
           print_model(v, f'{key}.{k}') 
 
 if __name__ == "__main__":
-  for size in ["t", "s", "m", "c", "e"][1:]:
+  for size in ["t", "s", "m", "c", "e"]:
     weights = f'./yolov9-{size}-tiny.pkl'
     source = "data/images/football.webp"
     imgsz = (1280,1280)
@@ -698,6 +698,8 @@ if __name__ == "__main__":
       #model.model = Sequential(size=23)
       model.model[0] = Conv(in_channels=3, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       model.model[1] = Conv(in_channels=32, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
+      model.model[2] = ELAN1(ch1=64, ch2=32, ch4=128)
+      model.model[3] = AConv(in_channels=64, out_channels=128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
