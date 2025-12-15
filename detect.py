@@ -798,7 +798,24 @@ if __name__ == "__main__":
       model.model[4].cv3[0].m[0] = RepNBottleneck(60, 60)
 
       model.model[5] = AConv(in_channels=240, out_channels=360, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      print_model(model, "model")
+      
+
+      model.model[6].cv1 = Conv(in_channels=360, out_channels=360, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
+      model.model[6].cv2[1] = Conv(in_channels=180, out_channels=180, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
+      model.model[6].cv3[1] = Conv(in_channels=180, out_channels=180, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
+      model.model[6].cv4 = Conv(in_channels=720, out_channels=360, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
+      model.model[6].cv2[0].cv1 = Conv(180, 90, 1, 1)
+      model.model[6].cv2[0].cv2 = Conv(180, 90, 1, 1)
+      model.model[6].cv2[0].cv3 = Conv(180, 180, 1, 1)
+      model.model[6].cv2[0].m = Sequential(size=1)
+      model.model[6].cv2[0].m[0] = RepNBottleneck(90, 90)
+      
+      model.model[6].cv3[0].cv1 = Conv(180, 90, 1, 1)
+      model.model[6].cv3[0].cv2 = Conv(180, 90, 1, 1)
+      model.model[6].cv3[0].cv3 = Conv(180, 180, 1, 1)
+      model.model[6].cv3[0].m[0] = RepNBottleneck(90, 90)
+
+      model.model[7] = AConv(in_channels=360, out_channels=480, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
 
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
