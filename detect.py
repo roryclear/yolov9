@@ -885,6 +885,25 @@ if __name__ == "__main__":
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
+    
+    elif size == "e":
+      model.model[0] = Silence()
+      model.model[1] = Conv(in_channels=3, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
+      model.model[2] = Conv(in_channels=64, out_channels=128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
+      model.model[3] = RepNCSPELAN4(128, 128, 32*2, 16*2, 32*2, 32*2, 16*2, 16*2, 32*2, 32*2, 256, 256, n=2)
+      model.model[4] = ADown(ch0=128, ch1=128)
+      model.model[5] = RepNCSPELAN4(256, 256, 128, 64, 128, 128, 64, 64, 128, 128, 512, 512, n=2)
+      model.model[6] = ADown(ch0=256, ch1=256)
+      model.model[7] = RepNCSPELAN4(512, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 1024, n=2)
+      model.model[8] = ADown(ch0=512, ch1=512)
+      model.model[9] = RepNCSPELAN4(1024, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 1024, n=2)
+      #model.model[10] = CBLinear()
+      print(type(model.model[10]))
+
+      for i in range(len(model.model)):
+        if not hasattr(model.model[i], 'f'): model.model[i].f = -1
+      state_dict = safe_load(f'./yolov9-{size}.safetensors')
+      load_state_dict(model, state_dict)
     else:
       print(size, len(model.model))
       model = pickle.load(open(weights, 'rb'))
