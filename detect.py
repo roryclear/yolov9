@@ -42,8 +42,6 @@ def autopad(k, p=None, d=1):  # kernel, padding, dilation
 class Conv():
     def __init__(self, in_channels:int, out_channels:int, kernel_size:int|tuple[int, ...], stride=1, padding:int|tuple[int, ...]|str=0,
                dilation=1, groups=1, bias=True, f=-1):
-        super().__init__()
-
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
         self.f = f
         return
@@ -53,7 +51,7 @@ class ADown():
     def __init__(self, ch0=128, f=-1):
       self.cv1 = Conv(in_channels=ch0, out_channels=ch0, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       self.cv2 = Conv(in_channels=ch0, out_channels=ch0, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=1, bias=True)
-      self.f = -1
+      self.f = f
     def __call__(self, x):
       
       x = Tensor.avg_pool2d(x, 2, 1, 1, 0, False, True)
@@ -75,8 +73,8 @@ class AConv():
         return self.cv1(x)
 
 class ELAN1(): # todo, hardcoded, might work on all though
-    def __init__(self, ch0=32, ch1=32, ch2=16, ch3=64):  # ch_in, ch_out, number, shortcut, groups, expansion
-      self.f = -1
+    def __init__(self, ch0=32, ch1=32, ch2=16, ch3=64, f=-1):  # ch_in, ch_out, number, shortcut, groups, expansion
+      self.f = f
       self.cv1 = Conv(in_channels=ch0, out_channels=ch1, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
       self.cv2 = Conv(in_channels=ch2, out_channels=ch2, kernel_size=3, stride=(1, 1), padding=(1, 1), dilation=(1, 1))
       self.cv3 = Conv(in_channels=ch2, out_channels=ch2, kernel_size=3, stride=(1, 1), padding=(1, 1), dilation=(1, 1))
@@ -121,15 +119,15 @@ class RepNCSP():
 
 class RepNCSPELAN4():
     # csp-elan
-    def __init__(self, a=1, b=1, c=1, n=3, f=-1):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self, a=1, b=1, c=1, n=3, f=-1, size=2):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
         self.cv1 = Conv(in_channels=a, out_channels=b*4, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
-        self.cv2 = Sequential(size=2)
+        self.cv2 = Sequential(size=size)
         self.cv2[0] = RepNCSP(b*2, b, n)
-        self.cv2[1] = Conv(in_channels=b*2, out_channels=b*2, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
+        if size > 1: self.cv2[1] = Conv(in_channels=b*2, out_channels=b*2, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
         self.cv3 = Sequential(size=2)
         self.cv3[0] = RepNCSP(b*2, b, n)
-        self.cv3[1] = Conv(in_channels=b*2, out_channels=b*2, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
+        if size > 1: self.cv3[1] = Conv(in_channels=b*2, out_channels=b*2, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
         self.cv4 = Conv(in_channels=b*8, out_channels=c, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
         self.f = f
 
@@ -336,30 +334,33 @@ class Silence():
     def __call__(self, x): return x
 
 class DetectionModel():
-  def __init__(self, a=16, b=32, c=64, e=96, f=24, g=128, h=256, i=224, j=160, k=48, l=144, m=192, n=80):
+  def __init__(self, a=16, b=32, c=64, e=96, f=24, g=128, h=256, i=224, j=160, k=48, l=144, m=192, n=80, o=32, p=32, q=16, r=2, s=3, t=64, u=96, v=32, w=16, x=32):
     self.model = Sequential(size=23)
     self.model[0] = Conv(in_channels=3, out_channels=a, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
     self.model[1] = Conv(in_channels=a, out_channels=b, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
-    self.model[2] = ELAN1(ch0=b, ch1=b, ch2=a, ch3=c)
-    self.model[3] = AConv(in_channels=b, out_channels=c, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-    self.model[4] = RepNCSPELAN4(c, a, c)
-    self.model[5] = AConv(in_channels=c, out_channels=e, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-    self.model[6] = RepNCSPELAN4(e, f, e)
+    if size in ["t", "s"]:
+      self.model[2] = ELAN1(ch0=b, ch1=o, ch2=a, ch3=c)
+    else:
+      self.model[2] = RepNCSPELAN4(64, 32, 128, n=1)
+    self.model[3] = AConv(in_channels=p, out_channels=c, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+    self.model[4] = RepNCSPELAN4(c, q, c, n=s)
+    self.model[5] = AConv(in_channels=t, out_channels=u, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+    self.model[6] = RepNCSPELAN4(e, f, e, n=s)
     self.model[7] = AConv(in_channels=e, out_channels=g, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-    self.model[8] = RepNCSPELAN4(g, b, g)
+    self.model[8] = RepNCSPELAN4(g, v, g, n=s)
     self.model[9] = SPPELAN(ch0=g, ch1=c, ch2=h, ch3=g)
     self.model[10] = Upsample()
     self.model[11] = Concat(f=[-1, 6])
-    self.model[12] = RepNCSPELAN4(i, f, e)
+    self.model[12] = RepNCSPELAN4(i, f, e, n=s)
     self.model[13] = Upsample()
     self.model[14] = Concat(f=[-1, 4])
-    self.model[15] = RepNCSPELAN4(j, a, c)
+    self.model[15] = RepNCSPELAN4(j, w, c, n=s)
     self.model[16] = AConv(in_channels=c, out_channels=k, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
     self.model[17] = Concat(f=[-1, 12])
-    self.model[18] = RepNCSPELAN4(l, f, e)
+    self.model[18] = RepNCSPELAN4(l, f, e, n=s)
     self.model[19] = AConv(in_channels=e, out_channels=c, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
     self.model[20] = Concat(f=[-1, 9])
-    self.model[21] = RepNCSPELAN4(m, b, g)
+    self.model[21] = RepNCSPELAN4(m, x, g, n=s)
     self.model[22] = DDetect(c, e, g, n, f=[15, 18, 21])
   def __call__(self, x):
     y = []  # outputs
@@ -700,35 +701,11 @@ if __name__ == "__main__":
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
     elif size == "s":
-      model = DetectionModel(a=32, b=64, c=128, e=192, f=48, g=256, h=512, i=448, j=320, k=96, l=288, m=384, n=128)
+      model = DetectionModel(a=32, b=64, c=128, e=192, f=48, g=256, h=512, i=448, j=320, k=96, l=288, m=384, n=128, o=64, p=64, q=32, t=128, u=192, v=64, w=32, x=64)
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
     elif size == "m":
-      model = DetectionModel()
-      model.model = Sequential(size=23)
-      model.model[0] = Conv(in_channels=3, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      model.model[1] = Conv(in_channels=32, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
-      model.model[2] = RepNCSPELAN4(64, 32, 128, n=1)
-      model.model[3] = AConv(in_channels=128, out_channels=240, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      model.model[4] = RepNCSPELAN4(240, 60, 240, n=1)
-      model.model[5] = AConv(in_channels=240, out_channels=360, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      model.model[6] = RepNCSPELAN4(360, 90, 360, n=1)
-      model.model[7] = AConv(in_channels=360, out_channels=480, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      model.model[8] = RepNCSPELAN4(480, 120, 480, n=1)
-      model.model[9] = SPPELAN(ch0=480, ch1=240, ch2=960, ch3=480)
-      model.model[10] = Upsample()
-      model.model[11] = Concat(f=[-1, 6])
-      model.model[12] = RepNCSPELAN4(840, 90, 360, n=1)
-      model.model[13] = Upsample()
-      model.model[14] = Concat(f=[-1, 4])
-      model.model[15] = RepNCSPELAN4(600, 60, 240, n=1)
-      model.model[16] = AConv(in_channels=240, out_channels=184, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      model.model[17] = Concat(f=[-1, 12])
-      model.model[18] = RepNCSPELAN4(544, 90, 360, n=1)
-      model.model[19] = AConv(in_channels=360, out_channels=240, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      model.model[20] = Concat(f=[-1, 9])
-      model.model[21] = RepNCSPELAN4(720, 120, 480, n=1)
-      model.model[22] = DDetect(a=240, b=360, c=480, d=240)
+      model = DetectionModel(a=32, b=64, c=240, e=360, f=90, g=480, h=960, i=840, j=600, k=184, l=544, m=720, n=240, o=128, p=128, q=60, r=1, s=1, t=240, u=360, v=120, w=60, x=120)
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
     elif size == "c":
