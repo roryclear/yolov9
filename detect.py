@@ -334,40 +334,36 @@ class Silence():
     def __call__(self, x): return x
 
 class DetectionModel():
-  def __init__(self, a=16, b=32, c=64, e=96, f=24, g=128, h=256, i=224, j=160, k=48, l=144, m=192, n=80, o=32, p=32, q=16, r=2, s=3, t=64, u=96, v=32, w=16, x=32):
+  def __init__(self, a=16, b=32, c=64, e=96, f=24, g=128, h=256, i=224, j=160, k=48, l=144, m=192, n=80, o=32, p=32, q=16, r=2, s=3, t=64, u=96, v=32, w=16, x=32, y=64, z=128, a1=64, a2=64, a3=96, a4=128, a5=128, a6=64, a7=128, a8=64, a9=96, a10=128, a11=128, size="t"):
     self.model = Sequential(size=23)
     self.model[0] = Conv(in_channels=3, out_channels=a, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
     self.model[1] = Conv(in_channels=a, out_channels=b, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
-    if size in ["t", "s"]:
-      self.model[2] = ELAN1(ch0=b, ch1=o, ch2=a, ch3=c)
-    else:
-      self.model[2] = RepNCSPELAN4(64, 32, 128, n=1)
-    self.model[3] = AConv(in_channels=p, out_channels=c, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-    self.model[4] = RepNCSPELAN4(c, q, c, n=s)
-    self.model[5] = AConv(in_channels=t, out_channels=u, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+    self.model[2] = ELAN1(ch0=b, ch1=o, ch2=a, ch3=c) if size in ["t", "s"] else RepNCSPELAN4(y, 32, z, n=s)
+    self.model[3] = ADown() if size == "c" else AConv(in_channels=p, out_channels=a1, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+    self.model[4] = RepNCSPELAN4(c, q, a2, n=s)
+    self.model[5] = ADown(256) if size == "c" else AConv(in_channels=t, out_channels=u, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
     self.model[6] = RepNCSPELAN4(e, f, e, n=s)
-    self.model[7] = AConv(in_channels=e, out_channels=g, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-    self.model[8] = RepNCSPELAN4(g, v, g, n=s)
-    self.model[9] = SPPELAN(ch0=g, ch1=c, ch2=h, ch3=g)
+    self.model[7] = ADown(256) if size == "c" else AConv(in_channels=a3, out_channels=g, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+    self.model[8] = RepNCSPELAN4(a4, v, a4, n=s)
+    self.model[9] = SPPELAN(ch0=a5, ch1=a6, ch2=h, ch3=a7)
     self.model[10] = Upsample()
     self.model[11] = Concat(f=[-1, 6])
     self.model[12] = RepNCSPELAN4(i, f, e, n=s)
     self.model[13] = Upsample()
     self.model[14] = Concat(f=[-1, 4])
     self.model[15] = RepNCSPELAN4(j, w, c, n=s)
-    self.model[16] = AConv(in_channels=c, out_channels=k, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+    self.model[16] = ADown(128) if size == "c" else AConv(in_channels=a8, out_channels=k, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
     self.model[17] = Concat(f=[-1, 12])
     self.model[18] = RepNCSPELAN4(l, f, e, n=s)
-    self.model[19] = AConv(in_channels=e, out_channels=c, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+    self.model[19] = ADown(256) if size == "c" else AConv(in_channels=a9, out_channels=c, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
     self.model[20] = Concat(f=[-1, 9])
-    self.model[21] = RepNCSPELAN4(m, x, g, n=s)
-    self.model[22] = DDetect(c, e, g, n, f=[15, 18, 21])
+    self.model[21] = RepNCSPELAN4(m, x, a10, n=s)
+    self.model[22] = DDetect(c, e, a11, n, f=[15, 18, 21])
   def __call__(self, x):
     y = []  # outputs
     for i in range(len(self.model)):
       m = self.model[i]
-      if m.f != -1:
-        x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]
+      if m.f != -1: x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]
       x = m(x)
       y.append(x)
     return x
@@ -701,39 +697,17 @@ if __name__ == "__main__":
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
     elif size == "s":
-      model = DetectionModel(a=32, b=64, c=128, e=192, f=48, g=256, h=512, i=448, j=320, k=96, l=288, m=384, n=128, o=64, p=64, q=32, t=128, u=192, v=64, w=32, x=64)
+      model = DetectionModel(a=32, b=64, c=128, e=192, f=48, g=256, h=512, i=448, j=320, k=96, l=288, m=384, n=128, o=64, p=64, q=32, t=128, u=192, v=64, w=32, x=64, a1=128, a2=128, a3=192, a4=256, a5=256, a6=128, a7=256, a8=128, a9=192, a10=256, a11=256, size="s")
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
     elif size == "m":
-      model = DetectionModel(a=32, b=64, c=240, e=360, f=90, g=480, h=960, i=840, j=600, k=184, l=544, m=720, n=240, o=128, p=128, q=60, r=1, s=1, t=240, u=360, v=120, w=60, x=120)
+      model = DetectionModel(a=32, b=64, c=240, e=360, f=90, g=480, h=960, i=840, j=600, k=184, l=544, m=720, n=240, o=128, p=128, q=60, r=1, s=1, t=240, u=360, v=120, w=60, x=120, a1=240, a2=240, a3=360, a4=480, a5=480, a6=240, a7=480, a8=240, a9=360, a10=480, a11=480,\
+                            size="m")
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
     elif size == "c":
-      model = DetectionModel()
-      model.model = Sequential(size=23)
-      model.model[0] = Conv(in_channels=3, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      model.model[1] = Conv(in_channels=64, out_channels=128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
-      model.model[2] = RepNCSPELAN4(128, 32, 256, n=1)
-      model.model[3] = ADown()
-      model.model[4] = RepNCSPELAN4(256, 64, 512, n=1)
-      model.model[5] = ADown(ch0=256)
-      model.model[6] = RepNCSPELAN4(512, 128, 512, n=1)
-      model.model[7] = ADown(ch0=256)
-      model.model[8] = RepNCSPELAN4(512, 128, 512, n=1)
-      model.model[9] = SPPELAN(ch0=512, ch1=256, ch2=1024, ch3=512)
-      model.model[10] = Upsample()
-      model.model[11] = Concat(f=[-1, 6])
-      model.model[12] = RepNCSPELAN4(1024, 128, 512, n=1)
-      model.model[13] = Upsample()
-      model.model[14] = Concat(f=[-1, 4])
-      model.model[15] = RepNCSPELAN4(1024, 64, 256, n=1)
-      model.model[16] = ADown(ch0=128)
-      model.model[17] = Concat(f=[-1, 12])
-      model.model[18] = RepNCSPELAN4(768, 128, 512, n=1)
-      model.model[19] = ADown(ch0=256)
-      model.model[20] = Concat(f=[-1, 9])
-      model.model[21] = RepNCSPELAN4(1024, 128, 512, n=1)
-      model.model[22] = DDetect(a=256, b=512, c=512, d=256)
+      model = DetectionModel(a=64, b=128, c=256, e=512, f=128, g=256, h=1024, i=1024, j=1024, k=128, l=768, m=1024, n=256, o=128, p=128, q=64, r=1, s=1, t=256, u=256, v=128, w=64, x=128, y=128, z=256, a1=128, a2=512, a3=256, a4=512, a5=512, a6=256, a7=512, a8=128, a9=256,\
+                            a10=512, a11=512, size="c")
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
     
@@ -785,9 +759,6 @@ if __name__ == "__main__":
       model.model[42] = DDetect(a=256, b=512, c=512, d=256, f=[35, 38, 41])
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
-    else:
-      print(size, len(model.model))
-      model = pickle.load(open(weights, 'rb'))
 
     path = "data/images/football.webp"
     im0 = cv2.imread(path)  # BGR
