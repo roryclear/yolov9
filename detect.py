@@ -38,13 +38,13 @@ def autopad(k, p=None, d=1):  # kernel, padding, dilation
 
 class Conv():
     def __init__(self, in_channels:int, out_channels:int, kernel_size:int|tuple[int, ...], stride=1, padding:int|tuple[int, ...]|str=0,
-               dilation=1, groups=1, bias=True):
+               dilation=1, groups=1, bias=True, f=-1):
         super().__init__()
 
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
+        self.f = f
         return
-    def __call__(self, x):
-      return self.conv(x).silu()
+    def __call__(self, x): return self.conv(x).silu()
 
 class ADown():
     def __init__(self, ch0=128, ch1=128):
@@ -892,6 +892,8 @@ if __name__ == "__main__":
       load_state_dict(model, state_dict)
     
     elif size == "e":
+      model = DetectionModel()
+      model.model = Sequential(size=43)
       model.model[0] = Silence()
       model.model[1] = Conv(in_channels=3, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
       model.model[2] = Conv(in_channels=64, out_channels=128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
@@ -907,7 +909,7 @@ if __name__ == "__main__":
       model.model[12] = CBLinear(ch0=512, ch1=448, c2s=[64, 128, 256], f=5)
       model.model[13] = CBLinear(ch0=1024, ch1=960, c2s=[64, 128, 256, 512], f=7)
       model.model[14] = CBLinear(ch0=1024, ch1=1984, c2s=[64, 128, 256, 512, 1024], f=9)
-      #TODO 15!!
+      model.model[15] = Conv(in_channels=3, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True, f=0)
       model.model[16] = CBFuse(f=[10, 11, 12, 13, 14, -1], idx=[0, 0, 0, 0, 0])
       model.model[17] = Conv(in_channels=64, out_channels=128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), dilation=(1, 1),  groups=1, bias=True)
       model.model[18] = CBFuse(f=[11, 12, 13, 14, -1], idx=[1, 1, 1, 1])
