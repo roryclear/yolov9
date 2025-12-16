@@ -558,7 +558,7 @@ expected["e"] = [[118.6095,186.78137,479.75702,778.1138,0.9503603,0.0,],
 [130.26685,557.0753,379.346,768.1344,0.2538286,0.0,],]
 
 
-def rescale_bounding_boxes(predictions, from_size=(1280, 853), to_size=(3020, 1986)):
+def rescale_bounding_boxes(predictions, from_size=None, to_size=None):
     from_w, from_h = from_size
     to_w, to_h = to_size
     scale_x = to_w / from_w
@@ -691,7 +691,7 @@ if __name__ == "__main__":
     pred = pred[pred[:, 4] >= 0.25]
     np.testing.assert_allclose(pred, expected[size], atol=1e-4, rtol=1e-3)
     class_labels = fetch('https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names').read_text().split("\n")
-    pred = rescale_bounding_boxes(pred)
+    pred = rescale_bounding_boxes(pred, from_size=(im.shape[2:][::-1]), to_size=im0.shape[:2][::-1])
     draw_bounding_boxes_and_save(source, f"out_{size}.jpg", pred, class_labels)
   print("passed")
 
