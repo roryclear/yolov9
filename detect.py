@@ -176,8 +176,7 @@ class DDetect():
     export = False  # export mode
     shape = None
 
-    def __init__(self, a=64, b=96, c=128, d=80):  # detection layer
-        super().__init__()
+    def __init__(self, a=64, b=96, c=128, d=80, f=[15, 18, 21]):  # detection layer
         self.stride = Tensor([0 ,0 ,0])
         self.anchors = Tensor.empty((2, 22680))
         self.strides = Tensor.empty((1, 22680))
@@ -218,7 +217,7 @@ class DDetect():
 
         self.nl = 3
         self.no = 144
-        self.f = [15, 18, 21]
+        self.f = f
         self.reg_max = 16
         self.nc = 80
       
@@ -842,38 +841,7 @@ if __name__ == "__main__":
       model.model[39] = ADown(ch0=256)
       model.model[40] = Concat(f=[-1, 29])
       model.model[41] = RepNCSPELAN4(1024, 256, 512, n=2)
-      
-      model.model[42] = DDetect()
-      model.model[42].cv2[0][0] = Conv(in_channels=256, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
-      model.model[42].cv2[0][1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=4, bias=True)
-      model.model[42].cv2[0][2] = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=4, bias=True)
-
-      model.model[42].cv2[1][0] = Conv(in_channels=512, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
-      model.model[42].cv2[1][1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=4, bias=True)
-      model.model[42].cv2[1][2] = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=4, bias=True)
-
-      model.model[42].cv2[2][0] = Conv(in_channels=512, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
-      model.model[42].cv2[2][1] = Conv(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=4, bias=True)
-      model.model[42].cv2[2][2] = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=4, bias=True)
-
-
-      model.model[42].cv3[0][0] = Conv(in_channels=256, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
-      model.model[42].cv3[0][1] = Conv(in_channels=256, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1), groups=1, bias=True)
-      model.model[42].cv3[0][2] = nn.Conv2d(in_channels=256, out_channels=80, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=1, dilation=(1, 1), bias=True)
-
-      model.model[42].cv3[1][0] = Conv(in_channels=512, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
-      model.model[42].cv3[1][1] = Conv(in_channels=256, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1), groups=1, bias=True)
-      model.model[42].cv3[1][2] = nn.Conv2d(in_channels=256, out_channels=80, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=1, dilation=(1, 1), bias=True)
-
-      model.model[42].cv3[2][0] = Conv(in_channels=512, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
-      model.model[42].cv3[2][1] = Conv(in_channels=256, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1), groups=1, bias=True)
-      model.model[42].cv3[2][2] = nn.Conv2d(in_channels=256, out_channels=80, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=1, dilation=(1, 1), bias=True)
-
-      model.model[42].nl = 3
-      model.model[42].no = 144
-      model.model[42].f = [35, 38, 41]
-      model.model[42].reg_max = 16
-      model.model[42].nc = 80
+      model.model[42] = DDetect(a=256, b=512, c=512, d=256, f=[35, 38, 41])
 
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
