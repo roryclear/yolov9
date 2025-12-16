@@ -237,7 +237,9 @@ class DDetect():
 
 class CBLinear():
     def __init__(self):  # ch_in, ch_outs, kernel, stride, padding, groups
-        super(CBLinear, self).__init__()
+        self.conv = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
+        self.c2s = [64]
+        self.f = 1
         return
 
     def __call__(self, x):
@@ -647,7 +649,7 @@ def print_model(x, key=""):
           print_model(v, f'{key}.{k}') 
 
 if __name__ == "__main__":
-  for size in ["t", "s", "m", "c", "e"]:
+  for size in ["t", "s", "m", "c", "e"][4:]:
     weights = f'./yolov9-{size}-tiny.pkl'
     source = "data/images/football.webp"
     imgsz = (1280,1280)
@@ -897,8 +899,8 @@ if __name__ == "__main__":
       model.model[7] = RepNCSPELAN4(512, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 1024, n=2)
       model.model[8] = ADown(ch0=512, ch1=512)
       model.model[9] = RepNCSPELAN4(1024, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 1024, n=2)
-      #model.model[10] = CBLinear()
-      print(type(model.model[10]))
+      model.model[10] = CBLinear()
+      print(type(model.model[11]))
 
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
