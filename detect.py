@@ -43,7 +43,8 @@ class Conv():
 
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
         return
-    def __call__(self, x): return self.conv(x).silu()
+    def __call__(self, x):
+      return self.conv(x).silu()
 
 class ADown():
     def __init__(self, ch0=128, ch1=128):
@@ -146,13 +147,14 @@ class SP():
 
 class SPPELAN():
     # spp-elan
-    def __init__(self, ch0=128, ch1=64, ch2=256, ch3=128):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self, ch0=128, ch1=64, ch2=256, ch3=128, f=-1):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
         self.cv1 = Conv(in_channels=ch0, out_channels=ch1, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
         self.cv2 = SP(s=1, k=5)
         self.cv3 = SP(s=1, k=5)
         self.cv4 = SP(s=1, k=5)
         self.cv5 = Conv(in_channels=ch2, out_channels=ch3, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
+        self.f = f
 
     def __call__(self, x):
         y = [self.cv1(x)]
@@ -249,8 +251,9 @@ class CBLinear():
         return tuple(outs)
 
 class CBFuse():
-    def __init__(self):
-        super(CBFuse, self).__init__()
+    def __init__(self, f=1, idx=1):
+        self.f = f
+        self.idx = idx
 
     def __call__(self, xs):
         target_size = xs[-1].shape[2:]
@@ -649,7 +652,7 @@ def print_model(x, key=""):
           print_model(v, f'{key}.{k}') 
 
 if __name__ == "__main__":
-  for size in ["t", "s", "m", "c", "e"][4:]:
+  for size in ["t", "s", "m", "c", "e"]:
     weights = f'./yolov9-{size}-tiny.pkl'
     source = "data/images/football.webp"
     imgsz = (1280,1280)
@@ -904,6 +907,37 @@ if __name__ == "__main__":
       model.model[12] = CBLinear(ch0=512, ch1=448, c2s=[64, 128, 256], f=5)
       model.model[13] = CBLinear(ch0=1024, ch1=960, c2s=[64, 128, 256, 512], f=7)
       model.model[14] = CBLinear(ch0=1024, ch1=1984, c2s=[64, 128, 256, 512, 1024], f=9)
+      #TODO 15!!
+      model.model[16] = CBFuse(f=[10, 11, 12, 13, 14, -1], idx=[0, 0, 0, 0, 0])
+      model.model[17] = Conv(in_channels=64, out_channels=128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), dilation=(1, 1),  groups=1, bias=True)
+      model.model[18] = CBFuse(f=[11, 12, 13, 14, -1], idx=[1, 1, 1, 1])
+      model.model[19] = RepNCSPELAN4(128, 128, 64, 32, 64, 64, 32, 32, 64, 64, 256, 256, n=2)
+      model.model[20] = ADown(ch0=128, ch1=128)
+      model.model[21] = CBFuse(f=[12, 13, 14, -1], idx=[2, 2, 2])
+      model.model[22] = RepNCSPELAN4(256, 256, 128, 64, 128, 128, 64, 64, 128, 128, 512, 512, n=2)
+      model.model[23] = ADown(ch0=256, ch1=256)
+      model.model[24] = CBFuse(f=[13, 14, -1], idx=[3, 3])
+      model.model[25] = RepNCSPELAN4(512, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 1024, n=2)
+      model.model[26] = ADown(ch0=512, ch1=512)
+      model.model[27] = CBFuse(f=[14, -1], idx=[4])
+      model.model[28] = RepNCSPELAN4(1024, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 1024, n=2)
+      model.model[29] = SPPELAN(ch0=1024, ch1=256, ch2=1024, ch3=512, f=28)
+      model.model[30] = Upsample()
+      model.model[31] = Concat()
+      model.model[31].f = [-1, 25]
+      model.model[32] = RepNCSPELAN4(1536, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 512, n=2)
+      model.model[33] = Upsample()
+      model.model[34] = Concat()
+      model.model[34].f = [-1, 22]
+      model.model[35] = RepNCSPELAN4(1024, 256, 128, 64, 128, 128, 64, 64, 128, 128, 512, 256, n=2)
+      model.model[36] = ADown(ch0=128, ch1=128)
+      model.model[37] = Concat()
+      model.model[37].f = [-1, 32]
+      model.model[38] = RepNCSPELAN4(768, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 512, n=2)
+      model.model[39] = ADown(ch0=256, ch1=256)
+      model.model[40] = Concat()
+      model.model[40].f = [-1, 29]
+      model.model[41] = RepNCSPELAN4(1024, 1024, 512, 256, 512, 512, 256, 256, 512, 512, 2048, 512, n=2)
 
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
