@@ -47,9 +47,10 @@ class Conv():
     def __call__(self, x): return self.conv(x).silu()
 
 class ADown():
-    def __init__(self, ch0=128):
+    def __init__(self, ch0=128, f=-1):
       self.cv1 = Conv(in_channels=ch0, out_channels=ch0, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       self.cv2 = Conv(in_channels=ch0, out_channels=ch0, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=1, bias=True)
+      self.f = -1
     def __call__(self, x):
       
       x = Tensor.avg_pool2d(x, 2, 1, 1, 0, False, True)
@@ -61,9 +62,10 @@ class ADown():
 
 class AConv():
     def __init__(self, in_channels:int, out_channels:int, kernel_size:int|tuple[int, ...], stride=1, padding:int|tuple[int, ...]|str=0,
-               dilation=1, groups=1, bias=True):
+               dilation=1, groups=1, bias=True, f=-1):
         super().__init__()
         self.cv1 = Conv(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
+        self.f = f
 
     def __call__(self, x):
         x = Tensor.avg_pool2d(x, kernel_size=2, stride=1, padding=0, ceil_mode=False, count_include_pad=True)
@@ -116,7 +118,7 @@ class RepNCSP():
 
 class RepNCSPELAN4():
     # csp-elan
-    def __init__(self, a=1, b=1, c=1, n=3):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self, a=1, b=1, c=1, n=3, f=-1):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
         self.cv1 = Conv(in_channels=a, out_channels=b*4, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
         self.cv2 = Sequential(size=2)
@@ -126,6 +128,7 @@ class RepNCSPELAN4():
         self.cv3[0] = RepNCSP(b*2, b, n)
         self.cv3[1] = Conv(in_channels=b*2, out_channels=b*2, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
         self.cv4 = Conv(in_channels=b*8, out_channels=c, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
+        self.f = f
 
     def __call__(self, x):
       x = self.cv1(x)
@@ -315,10 +318,10 @@ class DFL():
         return self.conv(x.transpose(2, 1).softmax(1)).view(b, 4, a)
 
 
-class Upsample(): # nearest for now
-  def __init__(self, scale_factor=2):
-      super().__init__()
+class Upsample():
+  def __init__(self, scale_factor=2, f=-1):
       self.scale_factor = scale_factor
+      self.f = f
   
   def __call__(self, x):
     N, C, H, W = x.shape
@@ -326,10 +329,8 @@ class Upsample(): # nearest for now
     return x.repeat_interleave(s, dim=2).repeat_interleave(s, dim=3)
 
 class Silence():
-    def __init__(self):
-        super(Silence, self).__init__()
-    def __call__(self, x):    
-        return x
+    def __init__(self, f=-1): self.f = f
+    def __call__(self, x): return x
 
 class DetectionModel():
   def __call__(self, x):
@@ -697,8 +698,6 @@ if __name__ == "__main__":
       model.model[22].reg_max = 16
       model.model[22].f = [15, 18, 21]
       model.model[22].nc = 80
-      for i in range(len(model.model)):
-        if not hasattr(model.model[i], 'f'): model.model[i].f = -1
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
     elif size == "s":
@@ -728,9 +727,6 @@ if __name__ == "__main__":
       model.model[20] = Concat(f=[-1, 9])
       model.model[21] = RepNCSPELAN4(192*2, 32*2, 128*2)
       model.model[22] = DDetect(a=128, b=192, c=256, d=128)
-
-      for i in range(len(model.model)):
-        if not hasattr(model.model[i], 'f'): model.model[i].f = -1
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
     elif size == "m":
@@ -759,9 +755,6 @@ if __name__ == "__main__":
       model.model[20] = Concat(f=[-1, 9])
       model.model[21] = RepNCSPELAN4(720, 120, 480, n=1)
       model.model[22] = DDetect(a=240, b=360, c=480, d=240)
-
-      for i in range(len(model.model)):
-        if not hasattr(model.model[i], 'f'): model.model[i].f = -1
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
     elif size == "c":
@@ -790,9 +783,6 @@ if __name__ == "__main__":
       model.model[20] = Concat(f=[-1, 9])
       model.model[21] = RepNCSPELAN4(1024, 128, 512, n=1)
       model.model[22] = DDetect(a=256, b=512, c=512, d=256)
-
-      for i in range(len(model.model)):
-        if not hasattr(model.model[i], 'f'): model.model[i].f = -1
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
     
@@ -842,9 +832,6 @@ if __name__ == "__main__":
       model.model[40] = Concat(f=[-1, 29])
       model.model[41] = RepNCSPELAN4(1024, 256, 512, n=2)
       model.model[42] = DDetect(a=256, b=512, c=512, d=256, f=[35, 38, 41])
-
-      for i in range(len(model.model)):
-        if not hasattr(model.model[i], 'f'): model.model[i].f = -1
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
     else:
