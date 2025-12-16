@@ -311,32 +311,32 @@ class Silence():
     def __call__(self, x): return x
 
 class DetectionModel():
-  def __init__(self, a=16, c=64, e=96, f=24, g=128, h=256, i=224, j=160, k=48, l=144, m=192, n=80, o=32, p=32, q=16, r=2, s=3, t=64, u=96, v=32, w=16, x=32, y=64, z=128, a1=64, a2=64, a3=96, a4=128, a5=128, a6=64, a8=64, a9=96, size=None):
+  def __init__(self, a=16, c=64, e=96, f=24, g=128, h=256, i=224, j=160, k=48, l=144, m=192, n=80, o=32, q=16, s=3, u=96, v=32, y=64, z=128, a1=64, a2=64, a4=128, size=None):
     if size is None: return
     self.model = Sequential(size=23)
     self.model[0] = Conv(in_channels=3, out_channels=a, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
     self.model[1] = Conv(in_channels=a, out_channels=a*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
     self.model[2] = ELAN1(ch0=a*2, ch1=o, ch2=a, ch3=c) if size in ["t", "s"] else RepNCSPELAN4(y, 32, z, n=s)
-    self.model[3] = ADown() if size == "c" else AConv(in_channels=p, out_channels=a1, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+    self.model[3] = ADown() if size == "c" else AConv(in_channels=o, out_channels=a1, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
     self.model[4] = RepNCSPELAN4(c, q, a2, n=s)
-    self.model[5] = ADown(256) if size == "c" else AConv(in_channels=t, out_channels=u, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+    self.model[5] = ADown(256) if size == "c" else AConv(in_channels=c, out_channels=u, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
     self.model[6] = RepNCSPELAN4(e, f, e, n=s)
-    self.model[7] = ADown(256) if size == "c" else AConv(in_channels=a3, out_channels=g, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+    self.model[7] = ADown(256) if size == "c" else AConv(in_channels=u, out_channels=g, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
     self.model[8] = RepNCSPELAN4(a4, v, a4, n=s)
-    self.model[9] = SPPELAN(ch0=a5, ch1=a6, ch2=h, ch3=a5)
+    self.model[9] = SPPELAN(ch0=a4, ch1=c, ch2=h, ch3=a4)
     self.model[10] = Upsample()
     self.model[11] = Concat(f=[-1, 6])
     self.model[12] = RepNCSPELAN4(i, f, e, n=s)
     self.model[13] = Upsample()
     self.model[14] = Concat(f=[-1, 4])
-    self.model[15] = RepNCSPELAN4(j, w, c, n=s)
-    self.model[16] = ADown(128) if size == "c" else AConv(in_channels=a8, out_channels=k, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+    self.model[15] = RepNCSPELAN4(j, q, c, n=s)
+    self.model[16] = ADown(128) if size == "c" else AConv(in_channels=a2, out_channels=k, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
     self.model[17] = Concat(f=[-1, 12])
     self.model[18] = RepNCSPELAN4(l, f, e, n=s)
-    self.model[19] = ADown(256) if size == "c" else AConv(in_channels=a9, out_channels=c, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+    self.model[19] = ADown(256) if size == "c" else AConv(in_channels=u, out_channels=c, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
     self.model[20] = Concat(f=[-1, 9])
-    self.model[21] = RepNCSPELAN4(m, x, a5, n=s)
-    self.model[22] = DDetect(c, e, a5, n, f=[15, 18, 21])
+    self.model[21] = RepNCSPELAN4(m, v, a4, n=s)
+    self.model[22] = DDetect(c, e, a4, n, f=[15, 18, 21])
   def __call__(self, x):
     y = []  # outputs
     for i in range(len(self.model)):
@@ -611,11 +611,10 @@ def draw_bounding_boxes_and_save(orig_img_path, output_img_path, predictions, cl
   cv2.imwrite(output_img_path, orig_img)
   print(f'saved detections at {output_img_path}')
 
-SIZES = {"t": [16, 64, 96, 24, 128, 256, 224, 160, 48, 144, 192, 80, 32, 32, 16, 2, 3, 64, 96, 32, 16, 32, 64, 128, 64, 64, 96, 128, 128, 64, 64, 96,"t"],
-"s": [32, 128, 192, 48, 256, 512, 448, 320, 96, 288, 384, 128, 64, 64, 32, 2, 3, 128, 192, 64, 32, 64, 64, 128, 128, 128, 192, 256, 256, 128, 128, 192, "s"],
-"m": [32, 240, 360, 90, 480, 960, 840, 600, 184, 544, 720, 240, 128, 128, 60, 1, 1, 240, 360, 120, 60, 120, 64, 128, 240, 240, 360, 480, 480, 240, 240, 360, "m"],
-"c": [64, 256, 512, 128, 256, 1024, 1024, 1024, 128, 768, 1024, 256, 128, 128, 64, 1, 1, 256, 256, 128, 64, 128, 128, 256, 128, 512, 256, 512, 512, 256, 128, 256, "c"]}
-
+SIZES = {"t": [16, 64, 96, 24, 128, 256, 224, 160, 48, 144, 192, 80, 32, 16, 3, 96, 32, 64, 128, 64, 64, 128,"t"],
+"s": [32, 128, 192, 48, 256, 512, 448, 320, 96, 288, 384, 128, 64, 32, 3, 192, 64, 64, 128, 128, 128, 256, "s"],
+"m": [32, 240, 360, 90, 480, 960, 840, 600, 184, 544, 720, 240, 128, 60, 1, 360, 120, 64, 128, 240, 240, 480, "m"],
+"c": [64, 256, 512, 128, 256, 1024, 1024, 1024, 128, 768, 1024, 256, 128, 64, 1, 256, 128, 128, 256, 128, 512, 512, "c"]}
 
 if __name__ == "__main__":
   for size in ["t", "s", "m", "c", "e"]:
