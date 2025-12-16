@@ -166,7 +166,9 @@ class SPPELAN():
         return y
 
 class Concat():
-    def __init__(self, dimension=1): self.d = dimension
+    def __init__(self, dimension=1, f=-1):
+      self.d = dimension
+      self.f = f
     def __call__(self, x): return Tensor.cat(x[0],x[1],dim=self.d)
 
 class DDetect():
@@ -674,20 +676,16 @@ if __name__ == "__main__":
       model.model[8] = RepNCSPELAN4(128, 128, 64, 32, 64, 64, 32, 32, 64, 64, 256, 128)
       model.model[9] = SPPELAN()
       model.model[10] = Upsample()
-      model.model[11] = Concat()
-      model.model[11].f = [-1, 6]
+      model.model[11] = Concat(f=[-1, 6])
       model.model[12] = RepNCSPELAN4(224, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
       model.model[13] = Upsample()
-      model.model[14] = Concat()
-      model.model[14].f = [-1, 4]
+      model.model[14] = Concat(f=[-1, 4])
       model.model[15] = RepNCSPELAN4(160, 64, 32, 16, 32, 32, 16, 16, 32, 32, 128, 64)
       model.model[16] = AConv(in_channels=64, out_channels=48, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      model.model[17] = Concat()
-      model.model[17].f = [-1, 12]
+      model.model[17] = Concat(f=[-1, 12])
       model.model[18] = RepNCSPELAN4(144, 96, 48, 24, 48, 48, 24, 24, 48, 48, 192, 96)
       model.model[19] = AConv(in_channels=96, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      model.model[20] = Concat()
-      model.model[20].f = [-1, 9]
+      model.model[20] = Concat(f=[-1, 9])
       model.model[21] = RepNCSPELAN4(192, 128, 64, 32, 64, 64, 32, 32, 64, 64, 256, 128)
       model.model[22] = DDetect()
       model.model[22].nl = 3
@@ -714,20 +712,16 @@ if __name__ == "__main__":
       model.model[8] = RepNCSPELAN4(128*2, 128*2, 64*2, 32*2, 64*2, 64*2, 32*2, 32*2, 64*2, 64*2, 256*2, 128*2)
       model.model[9] = SPPELAN(ch0=256, ch1=128, ch2=512, ch3=256)
       model.model[10] = Upsample()
-      model.model[11] = Concat()
-      model.model[11].f = [-1, 6]
+      model.model[11] = Concat(f=[-1, 6])
       model.model[12] = RepNCSPELAN4(224*2, 96*2, 48*2, 24*2, 48*2, 48*2, 24*2, 24*2, 48*2, 48*2, 192*2, 96*2)
       model.model[13] = Upsample()
-      model.model[14] = Concat()
-      model.model[14].f = [-1, 4]
+      model.model[14] = Concat(f=[-1, 4])
       model.model[15] = RepNCSPELAN4(160*2, 64*2, 32*2, 16*2, 32*2, 32*2, 16*2, 16*2, 32*2, 32*2, 128*2, 64*2)
       model.model[16] = AConv(in_channels=64*2, out_channels=48*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      model.model[17] = Concat()
-      model.model[17].f = [-1, 12]
+      model.model[17] = Concat(f=[-1, 12])
       model.model[18] = RepNCSPELAN4(144*2, 96*2, 48*2, 24*2, 48*2, 48*2, 24*2, 24*2, 48*2, 48*2, 192*2, 96*2)
       model.model[19] = AConv(in_channels=96*2, out_channels=64*2, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      model.model[20] = Concat()
-      model.model[20].f = [-1, 9]
+      model.model[20] = Concat(f=[-1, 9])
       model.model[21] = RepNCSPELAN4(192*2, 128*2, 64*2, 32*2, 64*2, 64*2, 32*2, 32*2, 64*2, 64*2, 256*2, 128*2)
       model.model[22] = DDetect()
       model.model[22].cv2[0][0] = Conv(in_channels=64*2, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
@@ -779,20 +773,16 @@ if __name__ == "__main__":
       model.model[8] = RepNCSPELAN4(480, 480, 240, 120, 240, 240, 120, 120, 240, 240, 960, 480, n=1)
       model.model[9] = SPPELAN(ch0=480, ch1=240, ch2=960, ch3=480)
       model.model[10] = Upsample()
-      model.model[11] = Concat()
-      model.model[11].f = [-1, 6]
+      model.model[11] = Concat(f=[-1, 6])
       model.model[12] = RepNCSPELAN4(840, 360, 180, 90, 180, 180, 90, 90, 180, 180, 720, 360, n=1)
       model.model[13] = Upsample()
-      model.model[14] = Concat()
-      model.model[14].f = [-1, 4]
+      model.model[14] = Concat(f=[-1, 4])
       model.model[15] = RepNCSPELAN4(600, 240, 120, 60, 120, 120, 60, 60, 120, 120, 480, 240, n=1)
       model.model[16] = AConv(in_channels=240, out_channels=184, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      model.model[17] = Concat()
-      model.model[17].f = [-1, 12]
+      model.model[17] = Concat(f=[-1, 12])
       model.model[18] = RepNCSPELAN4(544, 360, 180, 90, 180, 180, 90, 90, 180, 180, 720, 360, n=1)
       model.model[19] = AConv(in_channels=360, out_channels=240, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      model.model[20] = Concat()
-      model.model[20].f = [-1, 9]
+      model.model[20] = Concat(f=[-1, 9])
       model.model[21] = RepNCSPELAN4(720, 480, 240, 120, 240, 240, 120, 120, 240, 240, 960, 480, n=1)
       model.model[22] = DDetect()
       model.model[22].cv2[0][0] = Conv(in_channels=240, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1, bias=True)
@@ -837,20 +827,16 @@ if __name__ == "__main__":
       model.model[8] = RepNCSPELAN4(512, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 512, n=1)
       model.model[9] = SPPELAN(ch0=512, ch1=256, ch2=1024, ch3=512)
       model.model[10] = Upsample()
-      model.model[11] = Concat()
-      model.model[11].f = [-1, 6]
+      model.model[11] = Concat(f=[-1, 6])
       model.model[12] = RepNCSPELAN4(1024, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 512, n=1)
       model.model[13] = Upsample()
-      model.model[14] = Concat()
-      model.model[14].f = [-1, 4]
+      model.model[14] = Concat(f=[-1, 4])
       model.model[15] = RepNCSPELAN4(1024, 256, 128, 64, 128, 128, 64, 64, 128, 128, 512, 256, n=1)
       model.model[16] = ADown(ch0=128, ch1=128)
-      model.model[17] = Concat()
-      model.model[17].f = [-1, 12]
+      model.model[17] = Concat(f=[-1, 12])
       model.model[18] = RepNCSPELAN4(768, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 512, n=1)
       model.model[19] = ADown(ch0=256, ch1=256)
-      model.model[20] = Concat()
-      model.model[20].f = [-1, 9]
+      model.model[20] = Concat(f=[-1, 9])
       model.model[21] = RepNCSPELAN4(1024, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 512, n=1)
       
       model.model[22] = DDetect()
@@ -925,20 +911,16 @@ if __name__ == "__main__":
       model.model[28] = RepNCSPELAN4(1024, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 1024, n=2)
       model.model[29] = SPPELAN(ch0=1024, ch1=256, ch2=1024, ch3=512, f=28)
       model.model[30] = Upsample()
-      model.model[31] = Concat()
-      model.model[31].f = [-1, 25]
+      model.model[31] = Concat(f=[-1, 25])
       model.model[32] = RepNCSPELAN4(1536, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 512, n=2)
       model.model[33] = Upsample()
-      model.model[34] = Concat()
-      model.model[34].f = [-1, 22]
+      model.model[34] = Concat(f=[-1, 22])
       model.model[35] = RepNCSPELAN4(1024, 256, 128, 64, 128, 128, 64, 64, 128, 128, 512, 256, n=2)
       model.model[36] = ADown(ch0=128, ch1=128)
-      model.model[37] = Concat()
-      model.model[37].f = [-1, 32]
+      model.model[37] = Concat(f=[-1, 32]) 
       model.model[38] = RepNCSPELAN4(768, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 512, n=2)
       model.model[39] = ADown(ch0=256, ch1=256)
-      model.model[40] = Concat()
-      model.model[40].f = [-1, 29]
+      model.model[40] = Concat(f=[-1, 29])
       model.model[41] = RepNCSPELAN4(1024, 1024, 512, 256, 512, 512, 256, 256, 512, 512, 2048, 512, n=2)
       
       model.model[42] = DDetect()
