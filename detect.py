@@ -334,7 +334,8 @@ class Silence():
     def __call__(self, x): return x
 
 class DetectionModel():
-  def __init__(self, a=16, b=32, c=64, e=96, f=24, g=128, h=256, i=224, j=160, k=48, l=144, m=192, n=80, o=32, p=32, q=16, r=2, s=3, t=64, u=96, v=32, w=16, x=32, y=64, z=128, a1=64, a2=64, a3=96, a4=128, a5=128, a6=64, a7=128, a8=64, a9=96, a10=128, a11=128, size="t"):
+  def __init__(self, a=16, b=32, c=64, e=96, f=24, g=128, h=256, i=224, j=160, k=48, l=144, m=192, n=80, o=32, p=32, q=16, r=2, s=3, t=64, u=96, v=32, w=16, x=32, y=64, z=128, a1=64, a2=64, a3=96, a4=128, a5=128, a6=64, a7=128, a8=64, a9=96, a10=128, a11=128, size=None):
+    if size is None: return
     self.model = Sequential(size=23)
     self.model[0] = Conv(in_channels=3, out_channels=a, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
     self.model[1] = Conv(in_channels=a, out_channels=b, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
@@ -683,35 +684,24 @@ def print_model(x, key=""):
       for k, v in x.__dict__.items():
           print_model(v, f'{key}.{k}') 
 
+SIZES = {"t": [16, 32, 64, 96, 24, 128, 256, 224, 160, 48, 144, 192, 80, 32, 32, 16,2, 3, 64, 96, 32, 16, 32, 64, 128,64, 64, 96, 128, 128, 64, 128, 64, 96, 128, 128,"t"],
+"s": [32, 64, 128, 192, 48, 256, 512, 448, 320, 96, 288, 384, 128, 64, 64, 32, 2, 3, 128, 192, 64, 32, 64, 64, 128, 128, 128, 192, 256, 256, 128, 256, 128, 192, 256, 256, "s"],
+"m": [32, 64, 240, 360, 90, 480, 960, 840, 600, 184, 544, 720, 240, 128, 128, 60, 1, 1, 240, 360, 120, 60, 120, 64, 128, 240, 240, 360, 480, 480, 240, 480, 240, 360, 480, 480, "m"],
+"c": [64, 128, 256, 512, 128, 256, 1024, 1024, 1024, 128, 768, 1024, 256, 128, 128, 64, 1, 1, 256, 256, 128, 64, 128, 128, 256, 128, 512, 256, 512, 512, 256, 512, 128, 256, 512, 512, "c"]
+}
+
+
 if __name__ == "__main__":
   for size in ["t", "s", "m", "c", "e"]:
     weights = f'./yolov9-{size}-tiny.pkl'
     source = "data/images/football.webp"
     imgsz = (1280,1280)
-    model = pickle.load(open(weights, 'rb'))
-    
-    state_dict = get_state_dict(model)
-    
-    if size == "t":
-      model = DetectionModel()
+    model = pickle.load(open(weights, 'rb'))    
+    if size in ["t", "s", "m", "c"]:
+      model = DetectionModel(*SIZES[size])
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
       load_state_dict(model, state_dict)
-    elif size == "s":
-      model = DetectionModel(a=32, b=64, c=128, e=192, f=48, g=256, h=512, i=448, j=320, k=96, l=288, m=384, n=128, o=64, p=64, q=32, t=128, u=192, v=64, w=32, x=64, a1=128, a2=128, a3=192, a4=256, a5=256, a6=128, a7=256, a8=128, a9=192, a10=256, a11=256, size="s")
-      state_dict = safe_load(f'./yolov9-{size}.safetensors')
-      load_state_dict(model, state_dict)
-    elif size == "m":
-      model = DetectionModel(a=32, b=64, c=240, e=360, f=90, g=480, h=960, i=840, j=600, k=184, l=544, m=720, n=240, o=128, p=128, q=60, r=1, s=1, t=240, u=360, v=120, w=60, x=120, a1=240, a2=240, a3=360, a4=480, a5=480, a6=240, a7=480, a8=240, a9=360, a10=480, a11=480,\
-                            size="m")
-      state_dict = safe_load(f'./yolov9-{size}.safetensors')
-      load_state_dict(model, state_dict)
-    elif size == "c":
-      model = DetectionModel(a=64, b=128, c=256, e=512, f=128, g=256, h=1024, i=1024, j=1024, k=128, l=768, m=1024, n=256, o=128, p=128, q=64, r=1, s=1, t=256, u=256, v=128, w=64, x=128, y=128, z=256, a1=128, a2=512, a3=256, a4=512, a5=512, a6=256, a7=512, a8=128, a9=256,\
-                            a10=512, a11=512, size="c")
-      state_dict = safe_load(f'./yolov9-{size}.safetensors')
-      load_state_dict(model, state_dict)
-    
-    elif size == "e":
+    else:
       model = DetectionModel()
       model.model = Sequential(size=43)
       model.model[0] = Silence()
