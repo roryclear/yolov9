@@ -122,7 +122,7 @@ class RepNCSPELAN4():
         self.cv1 = Conv(in_channels=in_ch, out_channels=out_ch, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
         self.cv2 = Sequential(size=2)
         self.cv2[0] = RepNCSP(in_ch2, out_ch2, ch3, ch4, n)
-        self.cv2[1] = Conv(in_channels=in_ch5, out_channels=out_ch5, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
+        self.cv2[1] = Conv(in_channels=in_ch5, out_channels=in_ch5, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
         self.cv3 = Sequential(size=2)
         self.cv3[0] = RepNCSP(in_ch2, out_ch2, ch3, ch4, n)
         self.cv3[1] = Conv(in_channels=ch3, out_channels=ch3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
