@@ -46,9 +46,9 @@ class Conv():
     def __call__(self, x): return self.conv(x).silu()
 
 class ADown():
-    def __init__(self):
-      self.cv1 = Conv(in_channels=128, out_channels=128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
-      self.cv2 = Conv(in_channels=128, out_channels=128, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=1, bias=True)
+    def __init__(self, ch0=128, ch1=128):
+      self.cv1 = Conv(in_channels=ch0, out_channels=ch0, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      self.cv2 = Conv(in_channels=ch1, out_channels=ch1, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), groups=1, bias=True)
     def __call__(self, x):
       
       x = Tensor.avg_pool2d(x, 2, 1, 1, 0, False, True)
@@ -647,7 +647,7 @@ def print_model(x, key=""):
           print_model(v, f'{key}.{k}') 
 
 if __name__ == "__main__":
-  for size in ["t", "s", "m", "c", "e"]:
+  for size in ["t", "s", "m", "c", "e"][3:]:
     weights = f'./yolov9-{size}-tiny.pkl'
     source = "data/images/football.webp"
     imgsz = (1280,1280)
@@ -823,6 +823,8 @@ if __name__ == "__main__":
       model.model[1] = Conv(in_channels=64, out_channels=128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1),  groups=1, bias=True)
       model.model[2] = RepNCSPELAN4(128, 128, 32*2, 16*2, 32*2, 32*2, 16*2, 16*2, 32*2, 32*2, 256, 256, n=1)
       model.model[3] = ADown()
+      model.model[4] = RepNCSPELAN4(256, 256, 128, 64, 128, 128, 64, 64, 128, 128, 512, 512, n=1)
+      model.model[5] = ADown(ch0=256, ch1=256)
 
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
