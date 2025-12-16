@@ -236,10 +236,10 @@ class DDetect():
         return (y, x)
 
 class CBLinear():
-    def __init__(self):  # ch_in, ch_outs, kernel, stride, padding, groups
-        self.conv = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
-        self.c2s = [64]
-        self.f = 1
+    def __init__(self, ch0=64, ch1=64, c2s=[64], f=1):  # ch_in, ch_outs, kernel, stride, padding, groups
+        self.conv = nn.Conv2d(in_channels=ch0, out_channels=ch1, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
+        self.c2s = c2s
+        self.f = f
         return
 
     def __call__(self, x):
@@ -900,7 +900,10 @@ if __name__ == "__main__":
       model.model[8] = ADown(ch0=512, ch1=512)
       model.model[9] = RepNCSPELAN4(1024, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 1024, n=2)
       model.model[10] = CBLinear()
-      print(type(model.model[11]))
+      model.model[11] = CBLinear(ch0=256, ch1=192, c2s=[64, 128], f=3)
+      model.model[12] = CBLinear(ch0=512, ch1=448, c2s=[64, 128, 256], f=5)
+      model.model[13] = CBLinear(ch0=1024, ch1=960, c2s=[64, 128, 256, 512], f=7)
+      model.model[14] = CBLinear(ch0=1024, ch1=1984, c2s=[64, 128, 256, 512, 1024], f=9)
 
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
