@@ -647,7 +647,7 @@ def print_model(x, key=""):
           print_model(v, f'{key}.{k}') 
 
 if __name__ == "__main__":
-  for size in ["t", "s", "m", "c", "e"][3:]:
+  for size in ["t", "s", "m", "c", "e"]:
     weights = f'./yolov9-{size}-tiny.pkl'
     source = "data/images/football.webp"
     imgsz = (1280,1280)
@@ -825,6 +825,27 @@ if __name__ == "__main__":
       model.model[3] = ADown()
       model.model[4] = RepNCSPELAN4(256, 256, 128, 64, 128, 128, 64, 64, 128, 128, 512, 512, n=1)
       model.model[5] = ADown(ch0=256, ch1=256)
+      model.model[6] = RepNCSPELAN4(512, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 512, n=1)
+      model.model[7] = ADown(ch0=256, ch1=256)
+      model.model[8] = RepNCSPELAN4(512, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 512, n=1)
+      model.model[9] = SPPELAN(ch0=512, ch1=256, ch2=1024, ch3=512)
+      model.model[10] = Upsample()
+      model.model[11] = Concat()
+      model.model[11].f = [-1, 6]
+      model.model[12] = RepNCSPELAN4(1024, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 512, n=1)
+      model.model[13] = Upsample()
+      model.model[14] = Concat()
+      model.model[14].f = [-1, 4]
+      model.model[15] = RepNCSPELAN4(1024, 256, 128, 64, 128, 128, 64, 64, 128, 128, 512, 256, n=1)
+      model.model[16] = ADown(ch0=128, ch1=128)
+      model.model[17] = Concat()
+      model.model[17].f = [-1, 12]
+      model.model[18] = RepNCSPELAN4(768, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 512, n=1)
+      model.model[19] = ADown(ch0=256, ch1=256)
+      model.model[20] = Concat()
+      model.model[20].f = [-1, 9]
+      model.model[21] = RepNCSPELAN4(1024, 512, 256, 128, 256, 256, 128, 128, 256, 256, 1024, 512, n=1)
+      print(type(model.model[22]))
 
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
