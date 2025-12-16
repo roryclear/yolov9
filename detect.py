@@ -98,13 +98,13 @@ class RepNBottleneck():
   
 class RepNCSP():
     # CSP Bottleneck with 3 convolutions
-    def __init__(self, in_ch=1, out_ch=1, ch2=1, in_ch3=1, out_ch3=1, n=3):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self, in_ch=1, out_ch=1, ch2=1, in_ch3=1, n=3):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
         self.cv1 = Conv(in_ch, out_ch, 1, 1)
         self.cv2 = Conv(in_ch, out_ch, 1, 1)
         self.cv3 = Conv(ch2, ch2, 1, 1)
         self.m = Sequential(size=n)
-        for i in range(n): self.m[i] = RepNBottleneck(in_ch3, out_ch3)
+        for i in range(n): self.m[i] = RepNBottleneck(in_ch3, in_ch3)
 
     def __call__(self, x):
       x1 = self.cv1(x)
@@ -116,15 +116,15 @@ class RepNCSP():
 
 class RepNCSPELAN4():
     # csp-elan
-    def __init__(self, in_ch=1, out_ch=1, in_ch2=1, out_ch2=1, ch3=1, in_ch4=1, out_ch4=1, in_ch5=1, out_ch5=1,\
+    def __init__(self, in_ch=1, out_ch=1, in_ch2=1, out_ch2=1, ch3=1, ch4=1, out_ch4=1, in_ch5=1, out_ch5=1,\
                 in_ch6=1, out_ch6=1, n=3):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
         self.cv1 = Conv(in_channels=in_ch, out_channels=out_ch, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
         self.cv2 = Sequential(size=2)
-        self.cv2[0] = RepNCSP(in_ch2, out_ch2, ch3, in_ch4, out_ch4, n)
+        self.cv2[0] = RepNCSP(in_ch2, out_ch2, ch3, ch4, n)
         self.cv2[1] = Conv(in_channels=in_ch5, out_channels=out_ch5, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
         self.cv3 = Sequential(size=2)
-        self.cv3[0] = RepNCSP(in_ch2, out_ch2, ch3, in_ch4, out_ch4, n)
+        self.cv3[0] = RepNCSP(in_ch2, out_ch2, ch3, ch4, n)
         self.cv3[1] = Conv(in_channels=ch3, out_channels=ch3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
         self.cv4 = Conv(in_channels=in_ch6, out_channels=out_ch6, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
 
