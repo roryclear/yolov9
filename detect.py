@@ -88,23 +88,23 @@ class ELAN1(): # todo, hardcoded, might work on all though
     
 class RepNBottleneck():
     # Standard bottleneck
-    def __init__(self, in_ch, out_ch):  # ch_in, ch_out, shortcut, kernels, groups, expand
+    def __init__(self, ch):  # ch_in, ch_out, shortcut, kernels, groups, expand
         super().__init__()
-        self.cv1 = Conv(in_channels=in_ch,out_channels=out_ch, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1), groups=1)
-        self.cv2 = Conv(in_channels=in_ch,out_channels=out_ch, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1), groups=1)
+        self.cv1 = Conv(in_channels=ch,out_channels=ch, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1), groups=1)
+        self.cv2 = Conv(in_channels=ch,out_channels=ch, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1), groups=1)
 
     def __call__(self, x): return x + self.cv2(self.cv1(x))
 
   
 class RepNCSP():
     # CSP Bottleneck with 3 convolutions
-    def __init__(self, in_ch=1, out_ch=1, ch2=1, in_ch3=1, n=3):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self, a=1, b=1, n=3):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
-        self.cv1 = Conv(in_ch, out_ch, 1, 1)
-        self.cv2 = Conv(in_ch, out_ch, 1, 1)
-        self.cv3 = Conv(ch2, ch2, 1, 1)
+        self.cv1 = Conv(a, b, 1, 1)
+        self.cv2 = Conv(a, b, 1, 1)
+        self.cv3 = Conv(a, a, 1, 1)
         self.m = Sequential(size=n)
-        for i in range(n): self.m[i] = RepNBottleneck(in_ch3, in_ch3)
+        for i in range(n): self.m[i] = RepNBottleneck(b)
 
     def __call__(self, x):
       x1 = self.cv1(x)
@@ -116,16 +116,16 @@ class RepNCSP():
 
 class RepNCSPELAN4():
     # csp-elan
-    def __init__(self, in_ch=1, ch4=1, out_ch6=1, n=3):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self, a=1, b=1, c=1, n=3):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
-        self.cv1 = Conv(in_channels=in_ch, out_channels=ch4*4, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
+        self.cv1 = Conv(in_channels=a, out_channels=b*4, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
         self.cv2 = Sequential(size=2)
-        self.cv2[0] = RepNCSP(ch4*2, ch4, ch4*2, ch4, n)
-        self.cv2[1] = Conv(in_channels=ch4*2, out_channels=ch4*2, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
+        self.cv2[0] = RepNCSP(b*2, b, n)
+        self.cv2[1] = Conv(in_channels=b*2, out_channels=b*2, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
         self.cv3 = Sequential(size=2)
-        self.cv3[0] = RepNCSP(ch4*2, ch4, ch4*2, ch4, n)
-        self.cv3[1] = Conv(in_channels=ch4*2, out_channels=ch4*2, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
-        self.cv4 = Conv(in_channels=ch4*8, out_channels=out_ch6, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
+        self.cv3[0] = RepNCSP(b*2, b, n)
+        self.cv3[1] = Conv(in_channels=b*2, out_channels=b*2, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), dilation=(1, 1))
+        self.cv4 = Conv(in_channels=b*8, out_channels=c, kernel_size=1, stride=(1, 1), padding=(0, 0), dilation=(1, 1))
 
     def __call__(self, x):
       x = self.cv1(x)
