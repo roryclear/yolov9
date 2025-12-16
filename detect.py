@@ -769,6 +769,22 @@ if __name__ == "__main__":
       model.model[7] = AConv(in_channels=360, out_channels=480, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
       model.model[8] = RepNCSPELAN4(480, 480, 240, 120, 240, 240, 120, 120, 240, 240, 960, 480, n=1)
       model.model[9] = SPPELAN(ch0=480, ch1=240, ch2=960, ch3=480)
+      model.model[10] = Upsample()
+      model.model[11] = Concat()
+      model.model[11].f = [-1, 6]
+      model.model[12] = RepNCSPELAN4(840, 360, 180, 90, 180, 180, 90, 90, 180, 180, 720, 360, n=1)
+      model.model[13] = Upsample()
+      model.model[14] = Concat()
+      model.model[14].f = [-1, 4]
+      model.model[15] = RepNCSPELAN4(600, 240, 120, 60, 120, 120, 60, 60, 120, 120, 480, 240, n=1)
+      model.model[16] = AConv(in_channels=240, out_channels=184, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[17] = Concat()
+      model.model[17].f = [-1, 12]
+      model.model[18] = RepNCSPELAN4(544, 360, 180, 90, 180, 180, 90, 90, 180, 180, 720, 360, n=1)
+      model.model[19] = AConv(in_channels=360, out_channels=240, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
+      model.model[20] = Concat()
+      model.model[20].f = [-1, 9]
+      model.model[21] = RepNCSPELAN4(720, 480, 240, 120, 240, 240, 120, 120, 240, 240, 960, 480, n=1)
 
       for i in range(len(model.model)):
         if not hasattr(model.model[i], 'f'): model.model[i].f = -1
