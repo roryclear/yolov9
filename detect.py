@@ -1,23 +1,11 @@
-import os
-import sys
-from pathlib import Path
 import cv2
 import pickle
 from tinygrad import Tensor
 from tinygrad.helpers import fetch
 from tinygrad.dtype import dtypes
-from tinygrad.nn.state import load_state_dict, get_state_dict, safe_save, safe_load
+from tinygrad.nn.state import load_state_dict, safe_load
 import tinygrad.nn as nn
-
-TORCH_1_10 = False
-FILE = Path(__file__).resolve()
-ROOT = FILE.parents[0]  # YOLO root directory
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))  # add ROOT to PATH
-ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
-
 import numpy as np
-
 
 class Sequential():
     def __init__(self, size=0, list=None):
@@ -44,7 +32,6 @@ class Conv():
                dilation=1, groups=1, bias=True, f=-1):
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
         self.f = f
-        return
     def __call__(self, x): return self.conv(x).silu()
 
 class ADown():
@@ -114,8 +101,7 @@ class RepNCSP():
       x2 = self.m(x1)
       x3 = self.cv2(x)
       x4 = Tensor.cat(x2, x3, dim=1)
-      result = self.cv3(x4)
-      return result
+      return self.cv3(x4)
 
 class RepNCSPELAN4():
     # csp-elan
@@ -137,8 +123,7 @@ class RepNCSPELAN4():
       y2 = self.cv2(y1)
       y3 = self.cv3(y2)
       concat_result = Tensor.cat(y0, y1, y2, y3, dim=1)
-      res = self.cv4(concat_result)
-      return res
+      return self.cv4(concat_result)
 
 class SP():
     def __init__(self, k=3, s=1):
@@ -165,8 +150,7 @@ class SPPELAN():
         y.append(self.cv3(y[-1]))
         y.append(self.cv4(y[-1]))
         y = Tensor.cat(*y, dim=1)
-        y = self.cv5(y)
-        return y
+        return self.cv5(y)
 
 class Concat():
     def __init__(self, dimension=1, f=-1):
@@ -252,13 +236,8 @@ class CBLinear():
         self.conv = nn.Conv2d(in_channels=ch0, out_channels=ch1, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), dilation=(1, 1), groups=1, bias=True)
         self.c2s = c2s
         self.f = f
-        return
 
-    def __call__(self, x):
-        x = self.conv(x)
-        outs = x.split(self.c2s, dim=1)
-        outs = list(outs)
-        return tuple(outs)
+    def __call__(self, x): return tuple(self.conv(x).split(self.c2s, dim=1))
 
 class CBFuse():
     def __init__(self, f=1, idx=1):
@@ -274,10 +253,8 @@ class CBFuse():
           res.append(upsampled)
         
         res += xs[-1:]
-
         y = Tensor.stack(*res)
-        out = y.sum(0)
-        return out
+        return y.sum(0)
 
 def make_anchors(feats, strides, grid_cell_offset=0.5):
   anchor_points, stride_tensor = [], []
@@ -334,7 +311,7 @@ class Silence():
     def __call__(self, x): return x
 
 class DetectionModel():
-  def __init__(self, a=16, b=32, c=64, e=96, f=24, g=128, h=256, i=224, j=160, k=48, l=144, m=192, n=80, o=32, p=32, q=16, r=2, s=3, t=64, u=96, v=32, w=16, x=32, y=64, z=128, a1=64, a2=64, a3=96, a4=128, a5=128, a6=64, a7=128, a8=64, a9=96, a10=128, a11=128, size=None):
+  def __init__(self, a=16, b=32, c=64, e=96, f=24, g=128, h=256, i=224, j=160, k=48, l=144, m=192, n=80, o=32, p=32, q=16, r=2, s=3, t=64, u=96, v=32, w=16, x=32, y=64, z=128, a1=64, a2=64, a3=96, a4=128, a5=128, a6=64, a7=128, a8=64, a9=96, a10=128, size=None):
     if size is None: return
     self.model = Sequential(size=23)
     self.model[0] = Conv(in_channels=3, out_channels=a, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
@@ -359,7 +336,7 @@ class DetectionModel():
     self.model[19] = ADown(256) if size == "c" else AConv(in_channels=a9, out_channels=c, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), groups=1, bias=True)
     self.model[20] = Concat(f=[-1, 9])
     self.model[21] = RepNCSPELAN4(m, x, a10, n=s)
-    self.model[22] = DDetect(c, e, a11, n, f=[15, 18, 21])
+    self.model[22] = DDetect(c, e, a10, n, f=[15, 18, 21])
   def __call__(self, x):
     y = []  # outputs
     for i in range(len(self.model)):
@@ -634,61 +611,10 @@ def draw_bounding_boxes_and_save(orig_img_path, output_img_path, predictions, cl
   cv2.imwrite(output_img_path, orig_img)
   print(f'saved detections at {output_img_path}')
 
-def clean_model_object(model): # vibe clean pkl works
-    pytorch_junk = {
-        '_parameters', '_buffers', '_non_persistent_buffers_set',
-        '_backward_pre_hooks', '_backward_hooks', '_is_full_backward_hook',
-        '_forward_hooks', '_forward_hooks_with_kwargs', '_forward_hooks_always_called',
-        '_forward_pre_hooks', '_forward_pre_hooks_with_kwargs',
-        '_state_dict_hooks', '_state_dict_pre_hooks',
-        '_load_state_dict_pre_hooks', '_load_state_dict_post_hooks',
-        '_modules', 'training'
-    }
-    for attr in pytorch_junk:
-        if hasattr(model, attr):
-            try:
-                delattr(model, attr)
-            except:
-                pass
-    
-    def clean_submodules(obj):
-        if hasattr(obj, '__dict__'):
-            for attr in list(obj.__dict__.keys()):
-                if attr in pytorch_junk:
-                    try:
-                        delattr(obj, attr)
-                    except:
-                        pass
-            for key, value in obj.__dict__.items():
-                if hasattr(value, '__dict__'):
-                    clean_submodules(value)
-                elif isinstance(value, (list, tuple)):
-                    for item in value:
-                        if hasattr(item, '__dict__'):
-                            clean_submodules(item)
-                elif isinstance(value, dict):
-                    for item in value.values():
-                        if hasattr(item, '__dict__'):
-                            clean_submodules(item)
-    clean_submodules(model)
-    
-    return model
-
-def print_model(x, key=""):
-    if type(x) in [type(None), int, tuple, bool, list, Silence, Tensor]: print(f'{key} = {x}')
-    elif type(x) == Sequential:
-      print(f'{key} = {x}')
-      for i in range(len(x.list)): print_model(x.list[i], f'{key}.{i}')
-    else:
-      print(f'{key} = {x}')
-      for k, v in x.__dict__.items():
-          print_model(v, f'{key}.{k}') 
-
-SIZES = {"t": [16, 32, 64, 96, 24, 128, 256, 224, 160, 48, 144, 192, 80, 32, 32, 16,2, 3, 64, 96, 32, 16, 32, 64, 128,64, 64, 96, 128, 128, 64, 128, 64, 96, 128, 128,"t"],
-"s": [32, 64, 128, 192, 48, 256, 512, 448, 320, 96, 288, 384, 128, 64, 64, 32, 2, 3, 128, 192, 64, 32, 64, 64, 128, 128, 128, 192, 256, 256, 128, 256, 128, 192, 256, 256, "s"],
-"m": [32, 64, 240, 360, 90, 480, 960, 840, 600, 184, 544, 720, 240, 128, 128, 60, 1, 1, 240, 360, 120, 60, 120, 64, 128, 240, 240, 360, 480, 480, 240, 480, 240, 360, 480, 480, "m"],
-"c": [64, 128, 256, 512, 128, 256, 1024, 1024, 1024, 128, 768, 1024, 256, 128, 128, 64, 1, 1, 256, 256, 128, 64, 128, 128, 256, 128, 512, 256, 512, 512, 256, 512, 128, 256, 512, 512, "c"]
-}
+SIZES = {"t": [16, 32, 64, 96, 24, 128, 256, 224, 160, 48, 144, 192, 80, 32, 32, 16,2, 3, 64, 96, 32, 16, 32, 64, 128,64, 64, 96, 128, 128, 64, 128, 64, 96, 128,"t"],
+"s": [32, 64, 128, 192, 48, 256, 512, 448, 320, 96, 288, 384, 128, 64, 64, 32, 2, 3, 128, 192, 64, 32, 64, 64, 128, 128, 128, 192, 256, 256, 128, 256, 128, 192, 256, "s"],
+"m": [32, 64, 240, 360, 90, 480, 960, 840, 600, 184, 544, 720, 240, 128, 128, 60, 1, 1, 240, 360, 120, 60, 120, 64, 128, 240, 240, 360, 480, 480, 240, 480, 240, 360, 480, "m"],
+"c": [64, 128, 256, 512, 128, 256, 1024, 1024, 1024, 128, 768, 1024, 256, 128, 128, 64, 1, 1, 256, 256, 128, 64, 128, 128, 256, 128, 512, 256, 512, 512, 256, 512, 128, 256, 512, "c"]}
 
 
 if __name__ == "__main__":
