@@ -1,5 +1,5 @@
 from yolov9 import DetectionModel, SIZES, safe_load, load_state_dict, Sequential, Silence, Conv, RepNCSPELAN4, AConv,\
-ADown, CBLinear, CBFuse, SPPELAN, Upsample, Concat, DDetect, postprocess, letterbox, fetch, rescale_bounding_boxes, draw_bounding_boxes_and_save
+ADown, CBLinear, CBFuse, SPPELAN, Upsample, Concat, DDetect, postprocess, fetch, rescale_bounding_boxes, draw_bounding_boxes_and_save
 import cv2
 from tinygrad import Tensor
 from tinygrad.dtype import dtypes
@@ -147,11 +147,38 @@ expected["e"] = [[118.6095,186.78137,479.75702,778.1138,0.9503603,0.0,],
 [295.18512,214.09583,377.89227,501.78497,0.2601459,0.0,],
 [130.26685,557.0753,379.346,768.1344,0.2538286,0.0,],]
 
+
+def letterbox(im, new_shape=(1280, 1280), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
+    shape = im.shape[:2]
+    if isinstance(new_shape, int): new_shape = (new_shape, new_shape)
+    r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
+    if not scaleup: r = min(r, 1.0)
+
+    ratio = r, r
+    new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
+    dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]
+    if auto:
+        dw, dh = np.mod(dw, stride), np.mod(dh, stride)
+    elif scaleFill:  # stretch
+        dw, dh = 0.0, 0.0
+        new_unpad = (new_shape[1], new_shape[0])
+        ratio = new_shape[1] / shape[1], new_shape[0] / shape[0]
+
+    dw /= 2
+    dh /= 2
+
+    if shape[::-1] != new_unpad: im = cv2.resize(im, new_unpad, interpolation=cv2.INTER_LINEAR)
+    top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
+    left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+    im = cv2.copyMakeBorder(im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
+    return im, ratio, (dw, dh)
+
+
 if __name__ == "__main__":
   for size in ["t", "s", "m", "c", "e"]:
     weights = f'./yolov9-{size}-tiny.pkl'
     source = "data/images/football.webp"
-    imgsz = (1280,1280)
+    imgsz = (640,640)
     if size in ["t", "s", "m", "c"]:
       model = DetectionModel(*SIZES[size])
       state_dict = safe_load(f'./yolov9-{size}.safetensors')
