@@ -7,6 +7,8 @@ from tinygrad.nn.state import load_state_dict, safe_load
 import tinygrad.nn as nn
 import numpy as np
 from collections import defaultdict
+import time
+from pathlib import Path
 
 class Sequential():
     def __init__(self, size=0, list=None):
@@ -364,6 +366,31 @@ def postprocess(output, max_det=300, conf_threshold=0.25, iou_threshold=0.45):
   boxes = boxes * no_overlap_mask.unsqueeze(-1)
   return boxes
 
+def compute_transform(image, new_shape=(640, 640), auto=False, scaleFill=False, scaleup=True, stride=32) -> Tensor:
+  shape = image.shape[:2]  # current shape [height, width]
+  new_shape = (new_shape, new_shape) if isinstance(new_shape, int) else new_shape
+  r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
+  r = min(r, 1.0) if not scaleup else r
+  new_unpad = (int(round(shape[1] * r)), int(round(shape[0] * r)))
+  dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]
+  dw, dh = (np.mod(dw, stride), np.mod(dh, stride)) if auto else (0.0, 0.0)
+  new_unpad = (new_shape[1], new_shape[0]) if scaleFill else new_unpad
+  dw /= 2
+  dh /= 2
+  image = cv2.resize(image, new_unpad, interpolation=cv2.INTER_LINEAR) if shape[::-1] != new_unpad else image
+  top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
+  left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+  image = cv2.copyMakeBorder(image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(114, 114, 114))
+  return Tensor(image)
+
+def preprocess(im, imgsz=640, model_stride=32, model_pt=True):
+  same_shapes = all(x.shape == im[0].shape for x in im)
+  auto = same_shapes and model_pt
+  im = [compute_transform(x, new_shape=imgsz, auto=auto, stride=model_stride) for x in im]
+  im = Tensor.stack(*im) if len(im) > 1 else im[0].unsqueeze(0)
+  im = im[..., ::-1].permute(0, 3, 1, 2)  # BGR to RGB, BHWC to BCHW, (n, 3, h, w)
+  im = im / 255.0  # 0 - 255 to 0.0 - 1.0
+  return im
 
 def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
     shape = im.shape[:2]
@@ -446,3 +473,41 @@ SIZES = {"t": [16, 64, 96, 24, 128, 256, 224, 160, 48, 144, 192, 80, 32, 16, 3, 
 "s": [32, 128, 192, 48, 256, 512, 448, 320, 96, 288, 384, 128, 64, 32, 3, 192, 64, 64, 128, 128, 128, 256, "s"],
 "m": [32, 240, 360, 90, 480, 960, 840, 600, 184, 544, 720, 240, 128, 60, 1, 360, 120, 64, 128, 240, 240, 480, "m"],
 "c": [64, 256, 512, 128, 256, 1024, 1024, 1024, 128, 768, 1024, 256, 128, 64, 1, 256, 128, 128, 256, 128, 512, 512, "c"]}
+
+import sys
+from pathlib import Path
+if __name__ == '__main__':
+  if len(sys.argv) < 2:
+    print("Error: Image URL or path not provided.")
+    sys.exit(1)
+
+  img_path = sys.argv[1]
+  yolo_variant = sys.argv[2] if len(sys.argv) >= 3 else (print("No variant given, so choosing 't' as the default. Yolov9 has different variants, you can choose from ['t', 's', 'm', 'c', 'e']") or 't')
+  print(f'running inference for YOLO version {yolo_variant}')
+
+  output_folder_path = Path('./outputs')
+  output_folder_path.mkdir(parents=True, exist_ok=True)
+  #absolute image path or URL
+  image_location = np.frombuffer(fetch(img_path).read_bytes(), np.uint8)
+  image = [cv2.imdecode(image_location, 1)]
+  out_path = (output_folder_path / f"{Path(img_path).stem}_output{Path(img_path).suffix or '.png'}").as_posix()
+  if not isinstance(image[0], np.ndarray):
+    print('Error in image loading. Check your image file.')
+    sys.exit(1)
+  pre_processed_image = preprocess(image)
+  yolo_infer = DetectionModel(*SIZES[yolo_variant])
+  state_dict = safe_load(f'./yolov9-{yolo_variant}.safetensors')
+  load_state_dict(yolo_infer, state_dict)
+  st = time.time()
+  pred = yolo_infer(pre_processed_image)
+  pred = pred[0]
+  pred = postprocess(pred)
+  pred = pred.numpy()
+  pred = pred[pred[:, 4] >= 0.25]
+
+  print(f'did inference in {int(round(((time.time() - st) * 1000)))}ms')
+  #v9 and v3 have same 80 class names for Object Detection
+  class_labels = fetch('https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names').read_text().split("\n")
+  pred = rescale_bounding_boxes(pred, from_size=(pre_processed_image.shape[2:][::-1]), to_size=image[0].shape[:2][::-1])
+  #predictions = scale_boxes(pre_processed_image.shape[2:], predictions, image[0].shape)
+  draw_bounding_boxes_and_save(orig_img_path=image_location, output_img_path=out_path, predictions=pred, class_labels=class_labels)
