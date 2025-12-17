@@ -1,7 +1,7 @@
 import subprocess
 import sys
 import os
-if os.path.exists("perf_results.txt"): os.remove("perf_results.md")
+if os.path.exists("perf_results.md"): os.remove("perf_results.md")
 with open("perf_results.md", "a") as f:
   f.write("| Model | Resolution | FPS |\n")
   f.write("|-------|------------|-----|\n")
