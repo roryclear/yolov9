@@ -181,7 +181,7 @@ if __name__ == "__main__":
     imgsz = (640,640)
     if size in ["t", "s", "m", "c"]:
       model = DetectionModel(*SIZES[size])
-      state_dict = safe_load(f'./yolov9-{size}.safetensors')
+      state_dict = safe_load(fetch(f'https://huggingface.co/roryclear/yolov9/resolve/main/yolov9-{size}.safetensors'))
       load_state_dict(model, state_dict)
     else:
       model = DetectionModel()
@@ -229,7 +229,7 @@ if __name__ == "__main__":
       model.model[40] = Concat(f=[-1, 29])
       model.model[41] = RepNCSPELAN4(1024, 256, 512, n=2)
       model.model[42] = DDetect(a=256, b=512, c=512, d=256, f=[35, 38, 41])
-      state_dict = safe_load(f'./yolov9-{size}.safetensors')
+      state_dict = safe_load(fetch(f'https://huggingface.co/roryclear/yolov9/resolve/main/yolov9-{size}.safetensors'))
       load_state_dict(model, state_dict)
 
     path = "data/images/football.webp"
