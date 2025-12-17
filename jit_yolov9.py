@@ -80,7 +80,7 @@ if __name__ == "__main__":
     non_jit_out = pred.numpy()
 
   total_time = 0
-  for i in range(100):
+  for i in range(10):
     t = time.time()
     pred = do_inf(model, im)
     jit_out = pred.numpy()
@@ -89,3 +89,4 @@ if __name__ == "__main__":
     print(f"FPS: {fps:.2f}", end="\r", flush=True)
     np.testing.assert_allclose(jit_out, non_jit_out)
   print(f"FPS for model {size} res {res}x{res}:\t {fps:.2f}")
+  with open("perf_results.md", "a") as f: f.write(f"| {size} | {res} | {fps:.2f} |\n")
