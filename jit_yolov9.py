@@ -8,10 +8,7 @@ import time
 import sys
 
 @TinyJit
-def do_inf(model, im):
-  pred = model(im)
-  pred = pred[0]
-  return postprocess(pred)
+def do_inf(model, im): return model(im)
 
 if __name__ == "__main__":
   size = "s"

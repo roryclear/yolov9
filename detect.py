@@ -242,8 +242,6 @@ if __name__ == "__main__":
     if len(im.shape) == 3: im = im[None]
     
     pred = model(im)
-    pred = pred[0]
-    pred = postprocess(pred)
     pred = pred.numpy()
     pred = pred[pred[:, 4] >= 0.25]
     np.testing.assert_allclose(pred, expected[size], atol=1e-4, rtol=1e-3)

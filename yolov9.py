@@ -330,7 +330,8 @@ class DetectionModel():
       if m.f != -1: x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]
       x = m(x)
       y.append(x)
-    return x
+    
+    return postprocess(x[0])
 
 def compute_iou_matrix(boxes):
   x1, y1, x2, y2 = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
@@ -491,8 +492,6 @@ if __name__ == '__main__':
   load_state_dict(yolo_infer, state_dict)
   st = time.time()
   pred = yolo_infer(pre_processed_image)
-  pred = pred[0]
-  pred = postprocess(pred)
   pred = pred.numpy()
   pred = pred[pred[:, 4] >= 0.25]
   print(f'did inference in {int(round(((time.time() - st) * 1000)))}ms')
