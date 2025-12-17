@@ -5,6 +5,7 @@ from tinygrad import Tensor, TinyJit
 from tinygrad.dtype import dtypes
 import numpy as np
 import time
+import sys
 
 @TinyJit
 def do_inf(model, im):
@@ -15,6 +16,9 @@ def do_inf(model, im):
 if __name__ == "__main__":
   size = "s"
   res = 640
+  if len(sys.argv) > 1: size = sys.argv[1]
+  if len(sys.argv) > 2: res = int(sys.argv[2])
+
   if size in ["t", "s", "m", "c"]:
     model = DetectionModel(*SIZES[size])
     state_dict = safe_load(fetch(f'https://huggingface.co/roryclear/yolov9/resolve/main/yolov9-{size}.safetensors'))
@@ -84,4 +88,4 @@ if __name__ == "__main__":
     fps = (i + 1) / total_time
     print(f"FPS: {fps:.2f}", end="\r", flush=True)
     np.testing.assert_allclose(jit_out, non_jit_out)
-  print(f"FPS for model {size} res {res}x{res}: {fps:.2f}")
+  print(f"FPS for model {size} res {res}x{res}:\t {fps:.2f}")
