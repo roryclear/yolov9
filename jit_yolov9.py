@@ -83,4 +83,5 @@ if __name__ == "__main__":
     total_time += (time.time() - t)
     fps = (i + 1) / total_time
     print(f"FPS: {fps:.2f}", end="\r", flush=True)
+    np.testing.assert_allclose(jit_out, non_jit_out)
   print(f"FPS for model {size} res {res}x{res}: {fps:.2f}")
