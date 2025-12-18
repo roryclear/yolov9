@@ -5,7 +5,7 @@ tinygrad implementation of: https://github.com/WongKinYiu/yolov9
 pip install -r requirements.txt
 ```
 
-## Inference on Single Image:
+## Inference on single image:
 ```
 python yolov9.py {link or path to an image} {model variant}
 ```
