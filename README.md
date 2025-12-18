@@ -20,11 +20,10 @@ python test_jit.py
 ```
 BEAM=2 python test_jit.py
 ```
-this will result in a longer initial run time as the searches are performed and cached. Use:
+this will result in a longer initial run time as the searches are performed and cached. For visibility on the process use:
 ```
 BEAM=2 DEBUG=2 python test_jit.py
 ```
-for visibility on the process
 
 # Speed (M3 Macbook Air)
 ## with BEAM=2:
