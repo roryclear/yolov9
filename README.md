@@ -26,8 +26,8 @@ BEAM=2 DEBUG=2 python test_jit.py
 ```
 for visibility on the process
 
-# perf (M3 Macbook Air)
-## with BEAM=2
+# Speed (M3 Macbook Air)
+## with BEAM=2:
 | Model | Resolution | FPS |
 |-------|------------|-----|
 | t | 320 | 198.56 |
@@ -56,7 +56,7 @@ for visibility on the process
 | e | 1280 | 2.25 |
 | e | 1536 | 1.43 |
 
-## without BEAM=2
+## without BEAM=2:
 | Model | Resolution | FPS |
 |-------|------------|-----|
 | t | 320 | 139.94 |
