@@ -1,3 +1,29 @@
+## Inference on Single Image:
+```
+python yolov9.py {link or path to an image} {model variant}
+```
+
+## Live WebGPU inference
+```
+python compile_to_webgpu.py
+python -m http.server 8080
+```
+open localhost:8080
+
+## Testing performance
+```
+python test_jit.py
+```
+### for faster inference use tinygrad's BEAM search:
+```
+BEAM=2 python test_jit.py
+```
+this will result in a longer initial run time as the searches are performed and cached. Use:
+```
+BEAM=2 DEBUG=2 python test_jit.py
+```
+for visibility on the process
+
 # perf (M3 Macbook Air)
 ## with BEAM=2
 | Model | Resolution | FPS |
