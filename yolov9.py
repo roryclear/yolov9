@@ -530,7 +530,7 @@ if __name__ == '__main__':
     print('Error in image loading. Check your image file.')
     sys.exit(1)
   pre_processed_image = preprocess(image)
-  yolo_infer = YOLOv9(*SIZES[yolo_variant])
+  yolo_infer = YOLOv9(*SIZES[yolo_variant]) if yolo_variant in SIZES else YOLOv9()
   state_dict = safe_load(fetch(f'https://huggingface.co/roryclear/yolov9/resolve/main/yolov9-{yolo_variant}.safetensors'))
   load_state_dict(yolo_infer, state_dict)
   st = time.time()
