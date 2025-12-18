@@ -1,9 +1,10 @@
-from yolov9 import DetectionModel, SIZES, safe_load, load_state_dict, Sequential, Silence, Conv, RepNCSPELAN4, AConv,\
+from yolov9 import YOLOv9, SIZES, safe_load, load_state_dict, Sequential, Silence, Conv, RepNCSPELAN4, AConv,\
 ADown, CBLinear, CBFuse, SPPELAN, Upsample, Concat, DDetect, postprocess, fetch, rescale_bounding_boxes, draw_bounding_boxes_and_save
 import cv2
 from tinygrad import Tensor
 from tinygrad.dtype import dtypes
 import numpy as np
+from pathlib import Path
 
 expected = {}
 expected["t"] = [[118.48889,186.87097,490.29224,780.10376,0.93842876,0.0,],
@@ -173,13 +174,12 @@ def letterbox(im, new_shape=(1280, 1280), color=(114, 114, 114), auto=True, scal
     im = cv2.copyMakeBorder(im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
     return im, ratio, (dw, dh)
 
-
 if __name__ == "__main__":
   for size in ["t", "s", "m", "c", "e"]:
     weights = f'./yolov9-{size}-tiny.pkl'
     source = "data/images/football.webp"
     imgsz = (640,640)
-    model = DetectionModel(*SIZES[size]) if size in SIZES else DetectionModel()
+    model = YOLOv9(*SIZES[size]) if size in SIZES else YOLOv9()
     state_dict = safe_load(fetch(f'https://huggingface.co/roryclear/yolov9/resolve/main/yolov9-{size}.safetensors'))
     load_state_dict(model, state_dict)
     path = "data/images/football.webp"
@@ -197,5 +197,6 @@ if __name__ == "__main__":
     np.testing.assert_allclose(pred, expected[size], atol=1e-4, rtol=1e-3)
     class_labels = fetch('https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names').read_text().split("\n")
     pred = rescale_bounding_boxes(pred, from_size=(im.shape[2:][::-1]), to_size=im0.shape[:2][::-1])
-    draw_bounding_boxes_and_save(source, f"out_{size}.jpg", pred, class_labels)
+    Path('./outputs').mkdir(parents=True, exist_ok=True)
+    draw_bounding_boxes_and_save(source, f"outputs/out_{size}.jpg", pred, class_labels)
   print("passed")

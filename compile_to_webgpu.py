@@ -1,6 +1,6 @@
 from typing import Tuple, Optional, Dict, List, OrderedDict
 from pathlib import Path
-from yolov9 import DetectionModel, SIZES
+from yolov9 import YOLOv9, SIZES
 from tinygrad.uop.ops import Ops
 from tinygrad.dtype import DType, dtypes
 from tinygrad.tensor import Tensor
@@ -215,7 +215,7 @@ def export_model(model, target:str, *inputs, model_name: Optional[str] = "model"
 
 if __name__ == "__main__":
     Device.DEFAULT = "WEBGPU"
-    yolo_infer = DetectionModel(*SIZES["t"])
+    yolo_infer = YOLOv9(*SIZES["t"])
     state_dict = safe_load(fetch(f'https://huggingface.co/roryclear/yolov9/resolve/main/yolov9-t.safetensors'))
     load_state_dict(yolo_infer, state_dict)
     prg, inp_sizes, out_sizes, state = export_model(yolo_infer, Device.DEFAULT.lower(), Tensor.randn(1,3,640,640), model_name="yolov8")

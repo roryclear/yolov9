@@ -294,7 +294,7 @@ class Silence():
     def __init__(self, f=-1): self.f = f
     def __call__(self, x): return x
 
-class DetectionModel():
+class YOLOv9():
   def __init__(self, a=16, b=64, c=96, d=24, e=128, f=256, g=224, h=160, i=48, j=144, k=192, l=80, m=32, n=16, p=3, q=96, r=32, s=64, t=128, u=64, v=64, w=128, size=None):
     if size is not None:
       self.model = Sequential(size=23)
@@ -530,7 +530,7 @@ if __name__ == '__main__':
     print('Error in image loading. Check your image file.')
     sys.exit(1)
   pre_processed_image = preprocess(image)
-  yolo_infer = DetectionModel(*SIZES[yolo_variant])
+  yolo_infer = YOLOv9(*SIZES[yolo_variant])
   state_dict = safe_load(fetch(f'https://huggingface.co/roryclear/yolov9/resolve/main/yolov9-{yolo_variant}.safetensors'))
   load_state_dict(yolo_infer, state_dict)
   st = time.time()

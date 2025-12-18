@@ -1,4 +1,4 @@
-from yolov9 import DetectionModel, SIZES, safe_load, load_state_dict, Sequential, Silence, Conv, RepNCSPELAN4, AConv,\
+from yolov9 import YOLOv9, SIZES, safe_load, load_state_dict, Sequential, Silence, Conv, RepNCSPELAN4, AConv,\
 ADown, CBLinear, CBFuse, SPPELAN, Upsample, Concat, DDetect, postprocess, fetch, rescale_bounding_boxes, draw_bounding_boxes_and_save
 import cv2
 from tinygrad import Tensor, TinyJit
@@ -16,7 +16,7 @@ if __name__ == "__main__":
   if len(sys.argv) > 1: size = sys.argv[1]
   if len(sys.argv) > 2: res = int(sys.argv[2])
 
-  model = DetectionModel(*SIZES[size]) if size in SIZES else DetectionModel()
+  model = YOLOv9(*SIZES[size]) if size in SIZES else YOLOv9()
   state_dict = safe_load(fetch(f'https://huggingface.co/roryclear/yolov9/resolve/main/yolov9-{size}.safetensors'))
   load_state_dict(model, state_dict)
 
