@@ -177,13 +177,12 @@ def letterbox(im, new_shape=(1280, 1280), color=(114, 114, 114), auto=True, scal
 if __name__ == "__main__":
   for size in ["t", "s", "m", "c", "e"]:
     weights = f'./yolov9-{size}-tiny.pkl'
-    source = "data/images/football.webp"
     imgsz = (640,640)
     model = YOLOv9(*SIZES[size]) if size in SIZES else YOLOv9()
     state_dict = safe_load(fetch(f'https://huggingface.co/roryclear/yolov9/resolve/main/yolov9-{size}.safetensors'))
     load_state_dict(model, state_dict)
-    path = "data/images/football.webp"
-    im0 = cv2.imread(path)  # BGR
+    source = "data/images/football.webp"
+    im0 = cv2.imread(source)  # BGR
     im = letterbox(im0, new_shape=(1280, 1280), stride=32, auto=True)[0]
     im = im.transpose((2, 0, 1))[::-1]
     im = np.ascontiguousarray(im)
@@ -192,11 +191,34 @@ if __name__ == "__main__":
     if len(im.shape) == 3: im = im[None]
     
     pred = model(im)
-    pred = pred.numpy()
+    pred = pred.numpy()[0]
     pred = pred[pred[:, 4] >= 0.25]
     np.testing.assert_allclose(pred, expected[size], atol=1e-4, rtol=1e-3)
     class_labels = fetch('https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names').read_text().split("\n")
     pred = rescale_bounding_boxes(pred, from_size=(im.shape[2:][::-1]), to_size=im0.shape[:2][::-1])
     Path('./outputs').mkdir(parents=True, exist_ok=True)
     draw_bounding_boxes_and_save(source, f"outputs/out_{size}.jpg", pred, class_labels)
+  
+  print("testing batch size 2")
+  for size in ["t", "s", "m", "c", "e"]:
+    weights = f'./yolov9-{size}-tiny.pkl'
+    imgsz = (640,640)
+    model = YOLOv9(*SIZES[size]) if size in SIZES else YOLOv9()
+    state_dict = safe_load(fetch(f'https://huggingface.co/roryclear/yolov9/resolve/main/yolov9-{size}.safetensors'))
+    load_state_dict(model, state_dict)
+    source = "data/images/football.webp"
+    im0 = cv2.imread(source)  # BGR
+    im0 = letterbox(im0, new_shape=(1280, 1280), stride=32, auto=True)[0]
+    im0 = im0.transpose((2, 0, 1))[::-1]
+    im0 = np.ascontiguousarray(im0)
+    im0 = Tensor(im0).cast(dtypes.float32)
+    im0 /= 255
+    if len(im0.shape) == 3: im0 = im0[None]
+    im0 = im0.cat(im0, dim=0)
+    pred = model(im0)
+    pred = pred.numpy()
+    pred0 = pred[0][pred[0][:, 4] >= 0.25]
+    pred1 = pred[1][pred[1][:, 4] >= 0.25]
+    np.testing.assert_allclose(pred0, expected[size], atol=1e-4, rtol=1e-3)
+    np.testing.assert_allclose(pred1, expected[size], atol=1e-4, rtol=1e-3)
   print("passed")

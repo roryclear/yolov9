@@ -7,10 +7,24 @@ import numpy as np
 import time
 import sys
 
+# todo, is there an auto matic way to do this?
+def do_inf(model, im):
+  if im.shape[0] == 1: return do_inf1(model, im)
+  elif im.shape[0] == 2: return do_inf2(model, im)
+  elif im.shape[0] == 3: return do_inf3(model, im)
+  elif im.shape[0] == 4: return do_inf4(model, im)
+
 @TinyJit
-def do_inf(model, im): return model(im)
+def do_inf1(model, im): return model(im)
+@TinyJit
+def do_inf2(model, im): return model(im)
+@TinyJit
+def do_inf3(model, im): return model(im)
+@TinyJit
+def do_inf4(model, im): return model(im)
 
 if __name__ == "__main__":
+  batch_size = 1
   size = "s"
   res = 640
   if len(sys.argv) > 1: size = sys.argv[1]
@@ -20,7 +34,7 @@ if __name__ == "__main__":
   state_dict = safe_load(fetch(f'https://huggingface.co/roryclear/yolov9/resolve/main/yolov9-{size}.safetensors'))
   load_state_dict(model, state_dict)
 
-  im = Tensor(np.random.rand(1, 3, res, res).astype(np.float32))
+  im = Tensor(np.random.rand(batch_size, 3, res, res).astype(np.float32))
   # capture JIT + BEAM
   non_jit_out = None
   for _ in range(2):
