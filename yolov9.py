@@ -1,3 +1,4 @@
+
 import cv2
 from tinygrad import Tensor
 from tinygrad.helpers import fetch
@@ -391,25 +392,27 @@ def compute_iou_matrix(boxes):
 
 def postprocess(output, max_det=300, conf_threshold=0.25, iou_threshold=0.45):
   ret = None
+  xc, yc, w, h, class_scores = output[:, 0], output[:, 1], output[:, 2], output[:, 3], output[:, 4:]
+  x1 = xc - w / 2
+  y1 = yc - h / 2
+  x2 = xc + w / 2
+  y2 = yc + h / 2
+  class_ids = Tensor.argmax(class_scores, axis=1)
+  probs = class_scores.max(axis=1)
+  probs = Tensor.where(probs >= conf_threshold, probs, 0)
+  boxes = Tensor.stack(x1, y1, x2, y2, probs, class_ids, dim=2)
+  order_all = Tensor.topk(probs, max_det)[1]
+  batch_idx = Tensor.arange(order_all.shape[0]).reshape(-1, 1)
+  boxes = boxes[batch_idx, order_all]
+
   for i in range(output.shape[0]): #todo, proper batch, not loop
-    xc, yc, w, h, class_scores = output[i][0], output[i][1], output[i][2], output[i][3], output[i][4:]
-    class_ids = Tensor.argmax(class_scores, axis=0)
-    probs = Tensor.max(class_scores, axis=0)
-    probs = Tensor.where(probs >= conf_threshold, probs, 0)
-    x1 = xc - w / 2
-    y1 = yc - h / 2
-    x2 = xc + w / 2
-    y2 = yc + h / 2
-    boxes = Tensor.stack(x1, y1, x2, y2, probs, class_ids, dim=1)
-    order = Tensor.topk(probs, max_det)[1]
-    boxes = boxes[order]
-    iou = compute_iou_matrix(boxes[:, :4])
+    iou = compute_iou_matrix(boxes[i][:, :4])
     iou = Tensor.triu(iou, diagonal=1)
-    same_class_mask = boxes[:, -1][:, None] == boxes[:, -1][None, :]
+    same_class_mask = boxes[i][:, -1][:, None] == boxes[i][:, -1][None, :]
     high_iou_mask = (iou > iou_threshold) & same_class_mask
     no_overlap_mask = high_iou_mask.sum(axis=0) == 0
-    boxes = boxes * no_overlap_mask.unsqueeze(-1)
-    ret = ret.cat(boxes.unsqueeze(0)) if ret is not None else boxes.unsqueeze(0)
+    b = boxes[i] * no_overlap_mask.unsqueeze(-1)
+    ret = ret.cat(b.unsqueeze(0)) if ret is not None else b.unsqueeze(0)
   return ret
 
 def compute_transform(image, new_shape=(640, 640), auto=False, scaleFill=False, scaleup=True, stride=32) -> Tensor:
@@ -545,3 +548,4 @@ if __name__ == '__main__':
   class_labels = fetch('https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names').read_text().split("\n")
   pred = scale_boxes(pre_processed_image.shape[2:], pred, image[0].shape)
   draw_bounding_boxes_and_save(orig_img_path=image_location, output_img_path=out_path, predictions=pred, class_labels=class_labels)
+

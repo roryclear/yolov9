@@ -24,7 +24,7 @@ def do_inf3(model, im): return model(im)
 def do_inf4(model, im): return model(im)
 
 if __name__ == "__main__":
-  batch_size = 1
+  batch_size = 4
   size = "s"
   res = 640
   if len(sys.argv) > 1: size = sys.argv[1]
