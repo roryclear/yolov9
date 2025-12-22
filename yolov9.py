@@ -411,13 +411,11 @@ def postprocess(output, max_det=300, conf_threshold=0.25, iou_threshold=0.45):
   boxes = boxes[batch_idx, order_all]
   ious = compute_iou_matrix(boxes[:, :, :4])
   ious = Tensor.triu(ious, diagonal=1)
-  for i in range(output.shape[0]): #todo, proper batch, not loop
-    same_class_mask = boxes[i][:, -1][:, None] == boxes[i][:, -1][None, :]
-    high_iou_mask = (ious[i] > iou_threshold) & same_class_mask
-    no_overlap_mask = high_iou_mask.sum(axis=0) == 0
-    b = boxes[i] * no_overlap_mask.unsqueeze(-1)
-    ret = ret.cat(b.unsqueeze(0)) if ret is not None else b.unsqueeze(0)
-  return ret
+  class_ids = boxes[:, :, -1]
+  same_class_mask = class_ids[:, :, None] == class_ids[:, None, :]
+  high_iou_mask = (ious > iou_threshold) & same_class_mask
+  no_overlap_mask = high_iou_mask.sum(axis=1) == 0
+  return boxes * no_overlap_mask.unsqueeze(-1)
 
 def compute_transform(image, new_shape=(640, 640), auto=False, scaleFill=False, scaleup=True, stride=32) -> Tensor:
   shape = image.shape[:2]  # current shape [height, width]
