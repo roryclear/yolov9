@@ -378,28 +378,20 @@ class YOLOv9():
     return postprocess(x[0])
 
 def compute_iou_matrix(boxes):
-  s = boxes.shape[0]
-  ret = None
-
   x1s = boxes[:, :, 0]
   y1s = boxes[:, :, 1]
   x2s = boxes[:, :, 2]
   y2s = boxes[:, :, 3]
   areas = (x2s - x1s) * (y2s - y1s)
-
   x1 = Tensor.maximum(x1s[:, :, None], x1s[:, None, :])
   y1 = Tensor.maximum(y1s[:, :, None], y1s[:, None, :])
   x2 = Tensor.minimum(x2s[:, :, None], x2s[:, None, :])
   y2 = Tensor.minimum(y2s[:, :, None], y2s[:, None, :])
-
   w = Tensor.maximum(Tensor(0), x2 - x1)
   h = Tensor.maximum(Tensor(0), y2 - y1)
   intersection = w * h
-  for i in range(s):
-    union = areas[i][:, None] + areas[i][None, :] - intersection[i]
-    r = (intersection[i] / union).unsqueeze(0)
-    ret = ret.cat(r) if ret is not None else r
-  return ret
+  union = areas[:, :, None] + areas[:, None, :] - intersection
+  return intersection / union
 
 def postprocess(output, max_det=300, conf_threshold=0.25, iou_threshold=0.45):
   xc, yc, w, h, class_scores = output[:, 0], output[:, 1], output[:, 2], output[:, 3], output[:, 4:]
