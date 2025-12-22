@@ -378,6 +378,7 @@ class YOLOv9():
     return postprocess(x[0])
 
 def compute_iou_matrix(boxes):
+  boxes = boxes[0] # todo vectorize
   x1, y1, x2, y2 = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
   areas = (x2 - x1) * (y2 - y1)
   x1 = Tensor.maximum(x1[:, None], x1[None, :])
@@ -406,7 +407,7 @@ def postprocess(output, max_det=300, conf_threshold=0.25, iou_threshold=0.45):
   boxes = boxes[batch_idx, order_all]
 
   for i in range(output.shape[0]): #todo, proper batch, not loop
-    iou = compute_iou_matrix(boxes[i][:, :4])
+    iou = compute_iou_matrix(boxes[i][:, :4].unsqueeze(0))
     iou = Tensor.triu(iou, diagonal=1)
     same_class_mask = boxes[i][:, -1][:, None] == boxes[i][:, -1][None, :]
     high_iou_mask = (iou > iou_threshold) & same_class_mask
