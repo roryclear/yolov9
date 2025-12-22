@@ -378,25 +378,30 @@ class YOLOv9():
     return postprocess(x[0])
 
 def compute_iou_matrix(boxes):
+  s = boxes.shape[0]
   ret = None
-  for i in range(boxes.shape[0]):
-    b = boxes[i] # todo vectorize
-    x1, y1, x2, y2 = b[:, 0], b[:, 1], b[:, 2], b[:, 3]
-    areas = (x2 - x1) * (y2 - y1)
-    x1 = Tensor.maximum(x1[:, None], x1[None, :])
-    y1 = Tensor.maximum(y1[:, None], y1[None, :])
-    x2 = Tensor.minimum(x2[:, None], x2[None, :])
-    y2 = Tensor.minimum(y2[:, None], y2[None, :])
-    w = Tensor.maximum(Tensor(0), x2 - x1)
-    h = Tensor.maximum(Tensor(0), y2 - y1)
-    intersection = w * h
-    union = areas[:, None] + areas[None, :] - intersection
-    r = (intersection / union).unsqueeze(0)
+
+  x1s = boxes[:, :, 0]
+  y1s = boxes[:, :, 1]
+  x2s = boxes[:, :, 2]
+  y2s = boxes[:, :, 3]
+  areas = (x2s - x1s) * (y2s - y1s)
+
+  x1 = Tensor.maximum(x1s[:, :, None], x1s[:, None, :])
+  y1 = Tensor.maximum(y1s[:, :, None], y1s[:, None, :])
+  x2 = Tensor.minimum(x2s[:, :, None], x2s[:, None, :])
+  y2 = Tensor.minimum(y2s[:, :, None], y2s[:, None, :])
+
+  w = Tensor.maximum(Tensor(0), x2 - x1)
+  h = Tensor.maximum(Tensor(0), y2 - y1)
+  intersection = w * h
+  for i in range(s):
+    union = areas[i][:, None] + areas[i][None, :] - intersection[i]
+    r = (intersection[i] / union).unsqueeze(0)
     ret = ret.cat(r) if ret is not None else r
   return ret
 
 def postprocess(output, max_det=300, conf_threshold=0.25, iou_threshold=0.45):
-  ret = None
   xc, yc, w, h, class_scores = output[:, 0], output[:, 1], output[:, 2], output[:, 3], output[:, 4:]
   x1 = xc - w / 2
   y1 = yc - h / 2
