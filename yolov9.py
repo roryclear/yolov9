@@ -409,12 +409,11 @@ def postprocess(output, max_det=300, conf_threshold=0.25, iou_threshold=0.45):
   order_all = Tensor.topk(probs, max_det)[1]
   batch_idx = Tensor.arange(order_all.shape[0]).reshape(-1, 1)
   boxes = boxes[batch_idx, order_all]
-
+  ious = compute_iou_matrix(boxes[:, :, :4])
+  ious = Tensor.triu(ious, diagonal=1)
   for i in range(output.shape[0]): #todo, proper batch, not loop
-    iou = compute_iou_matrix(boxes[i][:, :4].unsqueeze(0))[0]
-    iou = Tensor.triu(iou, diagonal=1)
     same_class_mask = boxes[i][:, -1][:, None] == boxes[i][:, -1][None, :]
-    high_iou_mask = (iou > iou_threshold) & same_class_mask
+    high_iou_mask = (ious[i] > iou_threshold) & same_class_mask
     no_overlap_mask = high_iou_mask.sum(axis=0) == 0
     b = boxes[i] * no_overlap_mask.unsqueeze(-1)
     ret = ret.cat(b.unsqueeze(0)) if ret is not None else b.unsqueeze(0)
